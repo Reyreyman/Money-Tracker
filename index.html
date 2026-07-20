@@ -264,6 +264,35 @@ body.screen-shake { animation: scr-shake .45s linear; }
   .m-breather, #mascotImg, .mascot-box, .fx, body.screen-shake, #warnFlash.on, .caret { animation: none !important; }
 }
 
+/* ---------- modal (on-page replacement for prompt/confirm/alert, which in-app browsers block) ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(45,42,62,.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: #FBF3E4; border: 3px solid #2D2A3E; border-radius: 22px;
+  box-shadow: 6px 6px 0 #2D2A3E; padding: 22px 22px 20px;
+  width: 100%; max-width: 400px;
+  animation: modal-pop .22s cubic-bezier(.3,1.4,.5,1);
+}
+.modal h2 { font-size: 23px; margin: 0 0 4px; }
+.modal-msg { margin: 0 0 14px; font-weight: 700; color: #6C6680; font-size: 14.5px; white-space: pre-line; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button {
+  flex: 1; border: 3px solid #2D2A3E; border-radius: 14px; padding: 10px 12px;
+  font-family: 'Baloo 2'; font-size: 17px; font-weight: 800; cursor: pointer;
+  box-shadow: 3px 3px 0 #2D2A3E; transition: transform .1s ease, box-shadow .1s ease;
+}
+.modal-actions button:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 #2D2A3E; }
+.modal-actions button:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #2D2A3E; }
+.modal-cancel { background: #FFFDF7; color: #2D2A3E; }
+.modal-ok { background: #3ECF8E; color: #fff; }
+.modal-ok.danger { background: #FF6B6B; }
+@keyframes modal-pop { 0% { transform: scale(.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
+
 .empty { text-align: center; padding: 40px 20px; font-weight: 700; color: #6C6680; }
 .empty-emoji { font-size: 40px; margin-bottom: 8px; }
 .foot { text-align: center; color: #B5AC9A; font-weight: 700; font-size: 13px; margin-top: 8px; }
@@ -400,6 +429,19 @@ body.screen-shake { animation: scr-shake .45s linear; }
 </div>
 <div id="warnFlash"></div>
 
+<!-- ================= MODAL (replaces prompt/confirm/alert for in-app browsers) ================= -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <form class="modal" id="modalForm">
+    <h2 id="modalTitle"></h2>
+    <p class="modal-msg" id="modalMsg"></p>
+    <input type="text" id="modalInput" autocomplete="off">
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="modalCancel">Cancel</button>
+      <button type="submit" class="modal-ok" id="modalOk">OK</button>
+    </div>
+  </form>
+</div>
+
 <script>
 /* ================= constants ================= */
 const BASE_CATEGORIES = [
@@ -461,6 +503,68 @@ async function dbDelete(id) {
   });
 }
 
+/* ================= modal (replaces prompt/confirm/alert, which in-app browsers block) ================= */
+const modalEls = {
+  overlay: document.getElementById("modalOverlay"),
+  form: document.getElementById("modalForm"),
+  title: document.getElementById("modalTitle"),
+  msg: document.getElementById("modalMsg"),
+  input: document.getElementById("modalInput"),
+  ok: document.getElementById("modalOk"),
+  cancel: document.getElementById("modalCancel"),
+};
+let modalResolve = null;
+let modalHasInput = false;
+
+function openModal(opts) {
+  if (modalResolve) closeModal(modalHasInput ? null : false);
+  return new Promise(resolve => {
+    modalResolve = resolve;
+    modalHasInput = !!opts.input;
+    modalEls.title.textContent = opts.title || "";
+    modalEls.msg.textContent = opts.message || "";
+    modalEls.msg.classList.toggle("hidden", !opts.message);
+    modalEls.input.classList.toggle("hidden", !opts.input);
+    modalEls.input.value = opts.initial || "";
+    modalEls.input.placeholder = opts.placeholder || "";
+    modalEls.input.maxLength = opts.maxLength || 24;
+    modalEls.ok.textContent = opts.okText || "OK";
+    modalEls.ok.classList.toggle("danger", !!opts.danger);
+    modalEls.cancel.classList.toggle("hidden", !!opts.alertOnly);
+    modalEls.overlay.classList.remove("hidden");
+    if (opts.input) setTimeout(() => { modalEls.input.focus(); modalEls.input.select(); }, 60);
+    else modalEls.ok.focus();
+  });
+}
+function closeModal(result) {
+  modalEls.overlay.classList.add("hidden");
+  const r = modalResolve; modalResolve = null;
+  if (r) r(result);
+}
+modalEls.form.addEventListener("submit", e => {
+  e.preventDefault();
+  if (!modalResolve) return;
+  if (modalHasInput) {
+    const v = modalEls.input.value.trim();
+    if (!v) { modalEls.input.focus(); return; }
+    closeModal(v);
+  } else closeModal(true);
+});
+modalEls.cancel.addEventListener("click", () => closeModal(modalHasInput ? null : false));
+modalEls.overlay.addEventListener("click", e => {
+  if (e.target === modalEls.overlay) closeModal(modalHasInput ? null : false);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && modalResolve) closeModal(modalHasInput ? null : false);
+});
+
+/* prompt() replacement: resolves to trimmed text, or null if cancelled */
+const modalPrompt = (title, opts = {}) => openModal({ input: true, ...opts, title });
+/* confirm() replacement: resolves to true/false */
+const modalConfirm = (title, message, opts = {}) => openModal({ ...opts, title, message });
+/* alert() replacement: resolves when dismissed */
+const modalAlert = (title, message) => openModal({ title, message, alertOnly: true, okText: "OK" });
+
 /* ================= state ================= */
 let profiles = [];        // all profiles (metadata + data)
 let current = null;       // the open profile object
@@ -484,7 +588,7 @@ function newProfileObj(name) {
 async function saveCurrent() {
   if (!current) return;
   try { await dbPut(current); }
-  catch (e) { alert("Couldn't save. Your browser storage might be blocked."); }
+  catch (e) { modalAlert("Couldn't save", "Your browser storage might be blocked."); }
 }
 
 /* one-time import of the old localStorage save, so nothing is lost */
@@ -575,9 +679,9 @@ function renderHome() {
     ren.className = "icon-btn"; ren.title = "Rename"; ren.textContent = "✎";
     ren.onclick = async (ev) => {
       ev.stopPropagation();
-      const name = prompt("New name for this tracker:", p.name);
-      if (!name || !name.trim()) return;
-      p.name = name.trim().slice(0, 24);
+      const name = await modalPrompt("Rename tracker", { initial: p.name, placeholder: "Tracker name", okText: "Save" });
+      if (!name) return;
+      p.name = name.slice(0, 24);
       await dbPut(p);
       renderHome();
     };
@@ -586,7 +690,7 @@ function renderHome() {
     del.className = "icon-btn"; del.title = "Delete"; del.textContent = "🗑";
     del.onclick = async (ev) => {
       ev.stopPropagation();
-      if (!confirm('Delete "'+p.name+'" and ALL its data forever? This cannot be undone.')) return;
+      if (!await modalConfirm('Delete "'+p.name+'"?', "This erases the tracker and ALL its data forever. This cannot be undone.", { okText: "Delete", danger: true })) return;
       await dbDelete(p.id);
       profiles = profiles.filter(x => x.id !== p.id);
       renderHome();
@@ -602,9 +706,9 @@ function renderHome() {
   add.className = "profile-card new-card";
   add.innerHTML = '<div class="new-plus">+</div><div class="new-label">New Profile</div>';
   add.onclick = async () => {
-    const name = prompt("Name your new tracker (e.g. Me, Mom, Trip Fund):");
-    if (!name || !name.trim()) return;
-    const p = newProfileObj(name.trim().slice(0, 24));
+    const name = await modalPrompt("New tracker", { placeholder: "e.g. Me, Mom, Trip Fund", okText: "Create" });
+    if (!name) return;
+    const p = newProfileObj(name.slice(0, 24));
     profiles.push(p);
     await dbPut(p);
     openProfile(p.id);
@@ -652,9 +756,9 @@ function renderCatChips() {
   add.className = "chip chip-new";
   add.textContent = "+ New";
   add.onclick = async () => {
-    const name = prompt("Name your new category:");
-    if (!name || !name.trim()) return;
-    const clean = name.trim().slice(0,14);
+    const name = await modalPrompt("New category", { placeholder: "e.g. Pets, Gifts", okText: "Add", maxLength: 14 });
+    if (!name) return;
+    const clean = name.slice(0,14);
     const id = "c_" + clean.toLowerCase().replace(/[^a-z0-9]/g,"") + "_" + Date.now().toString(36);
     current.customCats.push({ id, name: clean, emoji:"🏷️", color: EXTRA_COLORS[current.customCats.length % EXTRA_COLORS.length] });
     selectedCat = id; catTouched = true;
@@ -837,7 +941,7 @@ function renderTxns(filtered) {
       const del = document.createElement("button");
       del.className = "del"; del.title = "Delete"; del.textContent = "✕";
       del.onclick = async () => {
-        if (!confirm("Delete this spend?")) return;
+        if (!await modalConfirm("Delete this spend?", peso(e.amount) + " · " + (e.note || catById(e.category).name), { okText: "Delete", danger: true })) return;
         current.entries = current.entries.filter(x => x.id !== e.id);
         await saveCurrent(); renderAll(); mascotSync();
       };
@@ -899,8 +1003,8 @@ async function addEntry() {
 /* ================= reset ================= */
 async function resetCurrent() {
   if (!current) return;
-  if (!confirm('Reset "'+current.name+'"?\n\nThis erases ALL its spends and custom categories forever. Other trackers are not affected.')) return;
-  if (!confirm("Last chance! This cannot be undone. Really reset?")) return;
+  if (!await modalConfirm('Reset "'+current.name+'"?', "This erases ALL its spends and custom categories forever. Other trackers are not affected.", { okText: "Reset", danger: true })) return;
+  if (!await modalConfirm("Last chance!", "This cannot be undone. Really reset?", { okText: "Really reset", danger: true })) return;
   current.entries = [];
   current.customCats = [];
   selectedCat = "food"; catTouched = false;
@@ -1122,7 +1226,7 @@ document.getElementById("inNote").addEventListener("input", e => {
     await migrateOldSave();
     profiles = await dbGetAll();
   } catch (e) {
-    alert("This browser blocked local database storage, so saving won't work. Try normal (non-private) browsing mode.");
+    modalAlert("Storage blocked", "This browser blocked local database storage, so saving won't work. Try normal (non-private) browsing mode.");
     profiles = [];
   }
   showHome();
