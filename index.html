@@ -293,12 +293,14 @@ body.screen-shake { animation: scr-shake .45s linear; }
   border: 2.5px solid #2D2A3E; border-radius: 14px; margin-bottom: 10px;
   background: #fff; font-weight: 800;
 }
-.board-list li.me { background: #FFEDBF; box-shadow: 3px 3px 0 #2D2A3E; }
+.board-list li.rank-1 { background: #FFE9A8; border-width: 3.5px; }
+.board-list li.rank-2 { background: #E4E4EC; }
+.board-list li.rank-3 { background: #F0D3B8; }
+.board-list li.me { box-shadow: 3px 3px 0 #2D2A3E; }
 .rank-badge { font-family: 'Baloo 2'; font-size: 19px; width: 34px; text-align: center; flex-shrink: 0; }
 .board-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .you-tag { font-size: 11px; background: #2D2A3E; color: #FFFDF7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 .board-amt { margin-left: auto; flex-shrink: 0; }
-.board-amt.neg { color: #C24545; }
 @media (max-width: 700px) { .squad-choice { grid-template-columns: 1fr; } }
 
 /* ---------- modal (on-page replacement for prompt/confirm/alert, which in-app browsers block) ---------- */
@@ -457,20 +459,14 @@ body.screen-shake { animation: scr-shake .45s linear; }
             <button class="icon-btn hidden" id="squadRenameBtn" title="Rename squad">✎</button></h2>
           <p class="sub">Code: <b id="squadCodeSmall"></b>
             <button class="icon-btn" id="squadCodeCopy" title="Copy code">📋</button>
-            · ranked by savings this month</p>
+            · ranked by spending this month</p>
           <ul class="board-list" id="boardList"></ul>
           <p class="none hidden" id="boardEmpty">Nobody on the board yet — share the code!</p>
         </div>
         <div class="card form-card">
-          <h2>Your savings setup</h2>
-          <p class="sub">Savings = monthly budget − what your linked tracker spent this month. Only your nickname and savings number are shared with the squad.</p>
+          <h2>Your spending setup</h2>
+          <p class="sub">Pick which tracker to count. Only your nickname and how much it spent this month are shared with the squad.</p>
           <div class="field">
-            <label for="squadBudget">Monthly budget</label>
-            <div class="amount-wrap"><span>₱</span>
-              <input id="squadBudget" type="number" inputmode="decimal" min="0" placeholder="0">
-            </div>
-          </div>
-          <div class="field" style="margin-top:12px">
             <label>Linked tracker</label>
             <div class="cat-row" id="squadTrackerRow" style="margin:8px 0 0"></div>
           </div>
@@ -1382,7 +1378,7 @@ const SQUAD_LS_KEY = "pisopal-squad";
 const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L look-alikes
 
 let fbAuth = null, fbDb = null, squadUser = null, squadAuthPromise = null;
-let squadLocalData = null;   // { code, nickname, budget, trackerId } — kept on-device only
+let squadLocalData = null;   // { code, nickname, trackerId } — kept on-device only
 let squadDocData = null;     // live squads/{code} doc
 let squadUnsubDoc = null, squadUnsubMembers = null;
 let squadSyncTimer = null, squadLastPushed = null;
@@ -1470,15 +1466,14 @@ function startBoard() {
   }, () => squadShow("squadOffline"));
   squadUnsubMembers = ref.collection("members").onSnapshot(snap => {
     const rows = [];
-    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), saved: Number(d.data().savedThisMonth) || 0 }));
+    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), spent: Number(d.data().spentThisMonth) || 0 }));
     renderBoard(rows);
   }, () => {});
   squadSyncSoon();
 }
 
-const pesoSigned = n => n < 0 ? "−" + peso(-n) : peso(n);
 function renderBoard(rows) {
-  rows.sort((a,b) => b.saved - a.saved || a.nickname.localeCompare(b.nickname));
+  rows.sort((a,b) => b.spent - a.spent || a.nickname.localeCompare(b.nickname));
   const list = document.getElementById("boardList");
   list.innerHTML = "";
   document.getElementById("boardEmpty").classList.toggle("hidden", rows.length > 0);
@@ -1486,20 +1481,21 @@ function renderBoard(rows) {
   rows.forEach((r, i) => {
     const isMe = squadUser && r.uid === squadUser.uid;
     const li = document.createElement("li");
-    if (isMe) li.className = "me";
+    const cls = [];
+    if (i < 3) cls.push("rank-" + (i + 1));
+    if (isMe) cls.push("me");
+    li.className = cls.join(" ");
     li.innerHTML =
       '<span class="rank-badge">'+(medals[i] || (i+1))+'</span>'+
       '<span class="board-nick">'+esc(r.nickname)+(isMe ? ' <span class="you-tag">you</span>' : '')+'</span>'+
-      '<b class="board-amt'+(r.saved < 0 ? ' neg' : '')+'">'+pesoSigned(r.saved)+'</b>';
+      '<b class="board-amt">'+peso(r.spent)+'</b>';
     list.appendChild(li);
   });
 }
 
-/* --- your savings: budget minus this month's spends of the linked tracker --- */
+/* --- linked tracker picker --- */
 function renderSquadSettings() {
   if (!squadLocalData) return;
-  const bEl = document.getElementById("squadBudget");
-  if (document.activeElement !== bEl) bEl.value = squadLocalData.budget || "";
   const row = document.getElementById("squadTrackerRow");
   row.innerHTML = "";
   if (!profiles.length) {
@@ -1517,17 +1513,16 @@ function renderSquadSettings() {
     row.appendChild(b);
   });
 }
-function squadMonthSpend() {
+/* total spent this month by the linked tracker */
+function squadSpentNow() {
   if (!squadLocalData) return 0;
   const p = profiles.find(x => x.id === squadLocalData.trackerId);
   if (!p) return 0;
   const m = thisMonthKey();
-  return p.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
+  const total = p.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
+  return Math.round(total * 100) / 100;
 }
-function squadSavedNow() {
-  return Math.round(((Number(squadLocalData.budget) || 0) - squadMonthSpend()) * 100) / 100;
-}
-/* push {nickname, savedThisMonth} to our member doc, debounced */
+/* push {nickname, spentThisMonth} to our member doc, debounced */
 function squadSyncSoon() {
   if (!squadLocalData) return;
   clearTimeout(squadSyncTimer);
@@ -1535,10 +1530,10 @@ function squadSyncSoon() {
     try {
       await squadAuth();
       if (!squadLocalData) return;
-      const v = squadSavedNow();
+      const v = squadSpentNow();
       if (v === squadLastPushed) return;
       await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid)
-        .set({ nickname: squadLocalData.nickname, savedThisMonth: v });
+        .set({ nickname: squadLocalData.nickname, spentThisMonth: v });
       squadLastPushed = v;
     } catch (e) { /* offline — next change retries */ }
   }, 600);
@@ -1567,9 +1562,9 @@ async function submitCreateSquad(ev) {
     }
     if (!code) throw new Error("no-free-code");
     await squadRef(code).set({ name, createdAt: Date.now(), ownerUID: user.uid });
-    saveSquadLocal({ code, nickname: nick, budget: 0, trackerId: profiles.length === 1 ? profiles[0].id : null });
+    saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
     squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, savedThisMonth: squadSavedNow() });
+    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow() });
     document.getElementById("codeBig").textContent = code;
     squadShow("squadReveal");
   } catch (e) {
@@ -1593,9 +1588,9 @@ async function submitJoinSquad(ev) {
       squadErr("sqJoinErr", "No squad with that code — double-check it with your friend!");
       return;
     }
-    saveSquadLocal({ code, nickname: nick, budget: 0, trackerId: profiles.length === 1 ? profiles[0].id : null });
+    saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
     squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, savedThisMonth: squadSavedNow() });
+    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow() });
     startBoard();
   } catch (e) {
     squadShow("squadJoinForm");
@@ -1640,12 +1635,6 @@ document.getElementById("squadRenameBtn").onclick = async () => {
   try { await squadRef(squadLocalData.code).update({ name: name.slice(0, 24) }); }
   catch (e) { modalAlert("Couldn't rename", "Check your connection and try again."); }
 };
-document.getElementById("squadBudget").addEventListener("input", e => {
-  if (!squadLocalData) return;
-  squadLocalData.budget = Math.max(0, parseFloat(e.target.value) || 0);
-  saveSquadLocal(squadLocalData);
-  squadSyncSoon();
-});
 document.getElementById("squadLeaveBtn").onclick = async () => {
   if (!squadLocalData) return;
   if (!await modalConfirm("Leave this squad?", "You'll drop off the leaderboard. You can rejoin any time with the code.", { okText: "Leave", danger: true })) return;
