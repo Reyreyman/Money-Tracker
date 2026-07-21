@@ -733,7 +733,7 @@ body.screen-shake { animation: scr-shake .45s linear; }
           <div class="squad-milestone hidden" id="squadMilestone"></div>
           <ul class="board-list" id="boardList"></ul>
           <p class="none hidden" id="boardEmpty">Nobody on the board yet — share the code!</p>
-          <p class="board-hint">Tap 😊＋ on a friend when they move to cheer their rank change (2 reactions/day).</p>
+          <p class="board-hint">Tap 😊＋ on a friend when they move to cheer their rank change (1 reaction/day).</p>
           <div class="squad-roast hidden" id="squadRoast"></div>
         </div>
         <div class="card form-card">
@@ -1133,6 +1133,10 @@ async function migrateOldSave() {
 /* ================= helpers ================= */
 const peso = n => "₱" + Number(n||0).toLocaleString("en-PH",{maximumFractionDigits:2});
 const todayStr = () => { const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); };
+/* "Today" in Philippine time (Asia/Manila is a fixed UTC+8, no DST). Used for
+   the streak check-in and leaderboard reactions so both reset at 12:00 AM
+   Manila for everyone, regardless of the device's own timezone. */
+const manilaTodayStr = () => new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString().slice(0, 10);
 const parseDate = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
 const monthLabel = s => { const d=parseDate(s+"-01"); return d.toLocaleString("en",{month:"short"})+" '"+String(d.getFullYear()).slice(2); };
 const weekStart = date => { const d=new Date(date); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); d.setHours(0,0,0,0); return d; };
@@ -1451,8 +1455,8 @@ async function addEntry() {
     note: noteEl.value.trim(),
     date: dateEl.value || todayStr(),
   });
-  /* adding a spend counts as today's check-in too */
-  if (!current.checkins.includes(todayStr())) current.checkins.push(todayStr());
+  /* adding a spend counts as today's (Manila) check-in too */
+  if (!current.checkins.includes(manilaTodayStr())) current.checkins.push(manilaTodayStr());
   await saveCurrent();
   amtEl.value = ""; noteEl.value = ""; catTouched = false;
   const btn = document.getElementById("addBtn");
@@ -1798,21 +1802,23 @@ function mascotStop() {
 /* A day counts as checked in if the profile has that date in `checkins`, added
    either by tapping the check-in button or by adding any spend that day. */
 const dayKey = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-const hasCheckedInToday = () => !!current && (current.checkins || []).includes(todayStr());
+/* the calendar day before a given YYYY-MM-DD key (pure calendar math) */
+const prevDayKey = key => { const d = parseDate(key); d.setDate(d.getDate() - 1); return dayKey(d); };
+const hasCheckedInToday = () => !!current && (current.checkins || []).includes(manilaTodayStr());
 
-/* Consecutive days ending today. Today's check-in isn't required to keep the run
-   alive during the current day: if today isn't checked in yet but yesterday is,
-   the streak still shows (and tapping today extends it). A fully missed day
-   between then and now drops it to 0. */
+/* Consecutive days ending on the current Manila day. Today's check-in isn't
+   required to keep the run alive during the current day: if today isn't checked
+   in yet but yesterday is, the streak still shows (and tapping today extends it).
+   A fully missed Manila day between then and now drops it to 0. */
 function computeStreak(checkins) {
   const set = new Set(checkins || []);
-  const cursor = new Date(); cursor.setHours(0,0,0,0);
-  if (!set.has(dayKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-    if (!set.has(dayKey(cursor))) return 0;
+  let key = manilaTodayStr();
+  if (!set.has(key)) {
+    key = prevDayKey(key);
+    if (!set.has(key)) return 0;
   }
   let n = 0;
-  while (set.has(dayKey(cursor))) { n++; cursor.setDate(cursor.getDate() - 1); }
+  while (set.has(key)) { n++; key = prevDayKey(key); }
   return n;
 }
 /* Longest consecutive run ever recorded (DST-safe: compares by calendar day). */
@@ -1853,9 +1859,9 @@ function celebrateStreak() {
 async function checkInToday() {
   if (!current) return;
   current.checkins = current.checkins || [];
-  if (current.checkins.includes(todayStr())) { renderStreak(); return; }
+  if (current.checkins.includes(manilaTodayStr())) { renderStreak(); return; }
   const before = computeStreak(current.checkins);
-  current.checkins.push(todayStr());
+  current.checkins.push(manilaTodayStr());
   await saveCurrent();
   renderStreak();
   if (computeStreak(current.checkins) > before) celebrateStreak();
@@ -2039,12 +2045,12 @@ function renderBoard(rows) {
   renderSquadRoast(rows);
 }
 
-/* ---- emoji reactions on rank changes (max 2 per person per day) ---- */
+/* ---- emoji reactions on rank changes (1 per person per day, resets 12AM Manila) ---- */
 const REACTION_EMOJIS = ["🔥","😂","👏","😮","💪","🎉"];
-const REACTIONS_PER_DAY = 2;
+const REACTIONS_PER_DAY = 1;
 function myReactionsToday() {
   const reactions = (squadDocData && squadDocData.reactions) || {};
-  const today = todayStr();
+  const today = manilaTodayStr();
   return Object.values(reactions).filter(x => x && x.by === (squadUser && squadUser.uid) && x.day === today).length;
 }
 function openReactPicker(btn, targetUid) {
@@ -2053,7 +2059,7 @@ function openReactPicker(btn, targetUid) {
   const pop = document.createElement("div");
   pop.className = "react-pop";
   if (left >= REACTIONS_PER_DAY) {
-    pop.innerHTML = '<span class="react-none">That\'s your 2 reactions for today 💤</span>';
+    pop.innerHTML = '<span class="react-none">That\'s your reaction for today 💤</span>';
   } else {
     REACTION_EMOJIS.forEach(e => {
       const b = document.createElement("button");
@@ -2072,8 +2078,8 @@ function closeReactPickerOnce() { document.querySelectorAll(".react-pop").forEac
 async function addReaction(targetUid, emoji) {
   if (!squadLocalData || !squadUser) return;
   if (myReactionsToday() >= REACTIONS_PER_DAY) return;
-  const day = todayStr();
-  const seq = myReactionsToday(); // 0 or 1
+  const day = manilaTodayStr();
+  const seq = myReactionsToday(); // 0 (one reaction per Manila day)
   const id = squadUser.uid + "_" + day + "_" + seq;
   try {
     await squadRef(squadLocalData.code).update({
@@ -2091,7 +2097,7 @@ const SQUAD_MILESTONES = {
 function renderSquadMilestone(rows) {
   const el = document.getElementById("squadMilestone");
   if (!el) return;
-  const today = todayStr();
+  const today = manilaTodayStr();
   const enough = rows.length >= SQUAD_MILESTONES.minMembers;
   const allIn = enough && rows.every(r => r.checkedInDay === today);
   const combined = rows.reduce((s,r) => s + (r.streak || 0), 0);
@@ -2172,7 +2178,7 @@ function squadSpentThisWeek() {
 function squadStreakNow() { const p = squadLinkedProfile(); return p ? computeStreak(p.checkins) : 0; }
 function squadCheckedInDay() {
   const p = squadLinkedProfile();
-  return p && (p.checkins || []).includes(todayStr()) ? todayStr() : "";
+  return p && (p.checkins || []).includes(manilaTodayStr()) ? manilaTodayStr() : "";
 }
 /* the member-doc payload we publish (Firestore only — IndexedDB is untouched) */
 function buildMemberDoc(nick) {
