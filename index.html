@@ -343,7 +343,47 @@ body.screen-shake { animation: scr-shake .45s linear; }
 .board-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .you-tag { font-size: 11px; background: var(--ink); color: var(--surface); border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
 .board-amt { margin-left: auto; flex-shrink: 0; }
+.board-avatar {
+  width: 30px; height: 30px; border-radius: 50%; border: 2.5px solid var(--ink);
+  object-fit: cover; background: var(--surface); flex-shrink: 0;
+}
 @media (max-width: 700px) { .squad-choice { grid-template-columns: 1fr; } }
+
+/* ---------- monthly recap ---------- */
+.recap-card { background: #EAF6FF; }
+:root[data-theme="dark"] .recap-card { background: #1E2733; }
+.recap-top { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0 18px; }
+.recap-stat {
+  border: 2.5px solid var(--ink); border-radius: 16px; padding: 12px 14px; background: var(--surface);
+  box-shadow: 3px 3px 0 var(--shadow);
+}
+.recap-label { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+.recap-big { font-family: 'Baloo 2'; font-size: 28px; font-weight: 800; margin-top: 2px; }
+.recap-cmp { font-weight: 800; font-size: 13px; margin-top: 4px; }
+.recap-cmp.up { color: #C24545; } .recap-cmp.down { color: #2FA36B; } .recap-cmp.flat { color: var(--muted); }
+:root[data-theme="dark"] .recap-cmp.up { color: #E58F87; } :root[data-theme="dark"] .recap-cmp.down { color: #58D3A0; }
+.recap-biggest { font-family: 'Baloo 2'; font-size: 20px; font-weight: 800; margin-top: 2px; }
+.recap-list { list-style: none; margin: 10px 0 0; padding: 0; }
+.recap-list li { margin-bottom: 10px; }
+.recap-line { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 14px; }
+.recap-line b { margin-left: auto; }
+.recap-pct { color: var(--muted); font-weight: 800; font-size: 12.5px; min-width: 38px; text-align: right; }
+.recap-bar { height: 12px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--surface); overflow: hidden; margin-top: 5px; }
+.recap-fill { height: 100%; border-right: 2.5px solid var(--ink); min-width: 6px; transition: width .4s ease; }
+@media (max-width: 700px) { .recap-top { grid-template-columns: 1fr; } }
+
+/* ---------- editable category sticker + avatar picker ---------- */
+.txn-emoji.editable { cursor: pointer; }
+.txn-emoji.editable:hover { transform: scale(1.08); }
+.avatar-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.avatar-opt {
+  width: 54px; height: 54px; border-radius: 14px; border: 3px solid var(--ink);
+  background: var(--surface); cursor: pointer; padding: 3px; box-shadow: 2px 2px 0 var(--shadow);
+  transition: transform .1s ease; overflow: hidden;
+}
+.avatar-opt:hover { transform: translate(-1px,-1px); }
+.avatar-opt.sel { outline: 3px solid var(--accent); outline-offset: 2px; }
+.avatar-opt img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
 /* ---------- modal (on-page replacement for prompt/confirm/alert, which in-app browsers block) ---------- */
 .modal-overlay {
@@ -690,6 +730,27 @@ body.screen-shake { animation: scr-shake .45s linear; }
     </div>
 
     <div id="content" class="hidden">
+      <section class="card recap-card" id="recapCard">
+        <h2>This month's recap 📅</h2>
+        <p class="sub" id="recapMonth"></p>
+        <div class="recap-top">
+          <div class="recap-stat">
+            <div class="recap-label">Total spent</div>
+            <div class="recap-big" id="recapTotal">₱0</div>
+            <div class="recap-cmp" id="recapCompare"></div>
+          </div>
+          <div class="recap-stat">
+            <div class="recap-label">Biggest category</div>
+            <div class="recap-biggest" id="recapBiggest">—</div>
+          </div>
+        </div>
+        <div class="recap-break">
+          <div class="recap-label">By category</div>
+          <ul class="recap-list" id="recapList"></ul>
+          <p class="none hidden" id="recapNone">No spends yet this month.</p>
+        </div>
+      </section>
+
       <section class="charts">
         <div class="card chart-card">
           <h2>Month by month</h2>
@@ -759,8 +820,26 @@ body.screen-shake { animation: scr-shake .45s linear; }
       </div>
     </div>
 
+    <div class="set-section">
+      <label>Your leaderboard mascot</label>
+      <p class="hint" style="margin:0 0 8px">Shown next to your name on the squad leaderboard.</p>
+      <div class="avatar-row" id="avatarRow"></div>
+    </div>
+
     <div class="modal-actions">
       <button type="button" class="modal-ok" id="settingsDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= CATEGORY PICKER (edit an existing expense's category) ================= -->
+<div class="modal-overlay hidden" id="catEditOverlay">
+  <div class="modal" id="catEditPanel" role="dialog" aria-label="Pick a category">
+    <h2>Pick a category</h2>
+    <p class="modal-msg" id="catEditMsg"></p>
+    <div class="cat-row" id="catEditRow"></div>
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="catEditCancel">Cancel</button>
     </div>
   </div>
 </div>
@@ -788,15 +867,19 @@ body.screen-shake { animation: scr-shake .45s linear; }
 const BASE_CATEGORIES = [
   { id:"food",          name:"Food",      emoji:"🍜", color:"#FF6B6B" },
   { id:"transport",     name:"Transport", emoji:"🚌", color:"#5AB1F7" },
+  { id:"bills",         name:"Bills",     emoji:"🧾", color:"#F472B6" },
+  { id:"shopping",      name:"Shopping",  emoji:"🛍️", color:"#34D399" },
   { id:"entertainment", name:"Fun",       emoji:"🎬", color:"#FFC53D" },
   { id:"subscriptions", name:"Subs",      emoji:"📱", color:"#A78BFA" },
   { id:"school",        name:"School",    emoji:"📚", color:"#3ECF8E" },
   { id:"other",         name:"Other",     emoji:"✨", color:"#FF9F68" },
 ];
-const EXTRA_COLORS = ["#F472B6","#2DD4BF","#FB923C","#818CF8","#A3E635","#F87171"];
+const EXTRA_COLORS = ["#F59E0B","#818CF8","#FB923C","#A3E635","#F87171","#2DD4BF"];
 const KEYWORDS = {
   food:["food","eat","lunch","dinner","breakfast","snack","coffee","milk tea","milktea","jollibee","mcdo","kfc","rice","grocery","groceries","canteen","merienda","drink"],
   transport:["jeep","grab","angkas","bus","train","lrt","mrt","fare","gas","toll","taxi","tricycle","commute"],
+  bills:["bill","bills","electric","meralco","water bill","rent","landlord","internet","insurance","utilities","dues"],
+  shopping:["shop","shopping","shopee","lazada","clothes","shirt","shoes","mall","uniqlo","haul","makeup","skincare","gift"],
   entertainment:["movie","cinema","game","genshin","welkin","concert","arcade","karaoke","gig"],
   subscriptions:["netflix","spotify","youtube","prime","subscription","subs","wifi","data","load","icloud","canva"],
   school:["tuition","print","printing","photocopy","xerox","project","school","notebook","pen","requirements","org fee"],
@@ -960,7 +1043,8 @@ const weekStart = date => { const d=new Date(date); const day=(d.getDay()+6)%7; 
 const fmtShort = d => d.toLocaleString("en",{month:"short",day:"numeric"});
 const fmtLastUsed = ts => { const d=new Date(ts); return d.toLocaleString("en",{month:"short",day:"numeric",year:"numeric"}); };
 const allCats = () => [...BASE_CATEGORIES, ...(current ? current.customCats : [])];
-const catById = id => allCats().find(c => c.id === id) || {name:id, emoji:"❓", color:"#999"};
+/* unknown or missing category (old data) falls back to "Other" so nothing breaks */
+const catById = id => allCats().find(c => c.id === id) || BASE_CATEGORIES.find(c => c.id === "other");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function currentRange() {
@@ -1294,10 +1378,11 @@ function renderTxns(filtered) {
       const c = catById(e.category);
       const li = document.createElement("li");
       li.innerHTML =
-        '<span class="txn-emoji" style="background:'+c.color+'33;border-color:'+c.color+'">'+c.emoji+'</span>'+
+        '<span class="txn-emoji editable" title="Tap to change category" style="background:'+c.color+'33;border-color:'+c.color+'">'+c.emoji+'</span>'+
         '<span class="txn-main"><span class="txn-note">'+esc(e.note || c.name)+'</span>'+
         '<span class="txn-date">'+fmtShort(parseDate(e.date))+' · '+esc(c.name)+'</span></span>'+
         '<b class="txn-amt">'+peso(e.amount)+'</b>';
+      li.querySelector(".txn-emoji").onclick = () => openCatEdit(e);
       const del = document.createElement("button");
       del.className = "del"; del.title = "Delete"; del.textContent = "✕";
       del.onclick = async () => {
@@ -1322,11 +1407,96 @@ function renderAll() {
     if (pieChart) { pieChart.destroy(); pieChart = null; }
     return;
   }
+  renderRecap();
   renderBarChart();
   renderPie(filtered, rangeTotal);
   renderWeeks(filtered);
   renderTxns(filtered);
 }
+
+/* ================= monthly recap ================= */
+/* Always reflects the current + previous calendar month (independent of the
+   range filter), pulled straight from current.entries — no extra storage. */
+function monthKeyOffset(back) {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - back);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
+}
+function renderRecap() {
+  if (!current) return;
+  const thisM = monthKeyOffset(0), lastM = monthKeyOffset(1);
+  const inMonth = k => current.entries.filter(e => e.date.slice(0, 7) === k);
+  const sum = arr => arr.reduce((s, e) => s + e.amount, 0);
+  const thisEntries = inMonth(thisM);
+  const total = sum(thisEntries), lastTotal = sum(inMonth(lastM));
+
+  document.getElementById("recapMonth").textContent =
+    parseDate(thisM + "-01").toLocaleString("en", { month: "long", year: "numeric" });
+  document.getElementById("recapTotal").textContent = peso(total);
+
+  /* comparison vs last month */
+  const cmp = document.getElementById("recapCompare");
+  if (lastTotal === 0 && total === 0) { cmp.textContent = "No spending yet"; cmp.className = "recap-cmp flat"; }
+  else if (lastTotal === 0) { cmp.textContent = "New vs last month (₱0)"; cmp.className = "recap-cmp up"; }
+  else {
+    const pct = Math.round((total - lastTotal) / lastTotal * 100);
+    if (pct > 0) { cmp.textContent = "▲ " + pct + "% vs last month"; cmp.className = "recap-cmp up"; }
+    else if (pct < 0) { cmp.textContent = "▼ " + Math.abs(pct) + "% vs last month"; cmp.className = "recap-cmp down"; }
+    else { cmp.textContent = "Same as last month"; cmp.className = "recap-cmp flat"; }
+  }
+
+  /* per-category breakdown for this month */
+  const byCat = {};
+  thisEntries.forEach(e => { const id = catById(e.category).id; byCat[id] = (byCat[id] || 0) + e.amount; });
+  const rows = Object.entries(byCat).map(([id, v]) => ({ ...catById(id), value: v }))
+    .sort((a, b) => b.value - a.value);
+
+  document.getElementById("recapBiggest").textContent =
+    rows.length ? rows[0].emoji + " " + rows[0].name : "—";
+
+  const list = document.getElementById("recapList");
+  const noneEl = document.getElementById("recapNone");
+  list.innerHTML = "";
+  noneEl.classList.toggle("hidden", rows.length > 0);
+  const max = rows.length ? rows[0].value : 1;
+  rows.forEach(r => {
+    const pct = total ? Math.round(r.value / total * 100) : 0;
+    const li = document.createElement("li");
+    li.innerHTML =
+      '<div class="recap-line"><span class="txn-emoji" style="background:' + r.color + '33;border-color:' + r.color + '">' + r.emoji + '</span>' +
+      esc(r.name) + '<span class="recap-pct">' + pct + '%</span><b>' + peso(r.value) + '</b></div>' +
+      '<div class="recap-bar"><div class="recap-fill" style="width:' + (r.value / max * 100) + '%;background:' + r.color + '"></div></div>';
+    list.appendChild(li);
+  });
+}
+
+/* ================= edit an existing expense's category ================= */
+let catEditEntry = null;
+function openCatEdit(entry) {
+  catEditEntry = entry;
+  const c = catById(entry.category);
+  document.getElementById("catEditMsg").textContent =
+    (entry.note ? '"' + entry.note + '" · ' : "") + peso(entry.amount) + " · currently " + c.name;
+  const row = document.getElementById("catEditRow");
+  row.innerHTML = "";
+  allCats().forEach(cat => {
+    const b = document.createElement("button");
+    b.className = "chip" + (entry.category === cat.id ? " chip-on" : "");
+    if (entry.category === cat.id) b.style.background = cat.color;
+    b.textContent = cat.emoji + " " + cat.name;
+    b.onclick = async () => {
+      catEditEntry.category = cat.id;
+      await saveCurrent();
+      closeCatEdit();
+      renderAll();
+      if (soundAudible()) sndPop();
+    };
+    row.appendChild(b);
+  });
+  document.getElementById("catEditOverlay").classList.remove("hidden");
+}
+function closeCatEdit() { catEditEntry = null; document.getElementById("catEditOverlay").classList.add("hidden"); }
+document.getElementById("catEditCancel").onclick = closeCatEdit;
+document.getElementById("catEditOverlay").addEventListener("click", e => { if (e.target.id === "catEditOverlay") closeCatEdit(); });
 
 /* ================= form ================= */
 function guessCategory(text) {
@@ -1430,8 +1600,11 @@ function loadSettings() {
     volume: Math.min(100, Math.max(0, Number.isFinite(s.volume) ? s.volume : 70)),
     muted: s.muted === undefined ? true : !!s.muted,   // default muted (matches old default)
     theme: s.theme === "dark" ? "dark" : "light",
+    avatar: [1,2,3,4,5].includes(s.avatar) ? s.avatar : 1,   // leaderboard mascot (mascot-N.png)
   };
 }
+const MASCOT_COUNT = 5;
+const avatarSrc = n => "mascot-" + ([1,2,3,4,5].includes(n) ? n : 1) + ".png";
 let settings = loadSettings();
 function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} }
 const getTheme = () => settings.theme;
@@ -1503,6 +1676,29 @@ function syncSettingsPanel() {
   mt.setAttribute("aria-pressed", settings.muted ? "true" : "false");
   document.getElementById("themeLight").classList.toggle("sel", settings.theme !== "dark");
   document.getElementById("themeDark").classList.toggle("sel", settings.theme === "dark");
+  renderAvatarPicker();
+}
+function renderAvatarPicker() {
+  const row = document.getElementById("avatarRow");
+  row.innerHTML = "";
+  for (let n = 1; n <= MASCOT_COUNT; n++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "avatar-opt" + (settings.avatar === n ? " sel" : "");
+    b.title = "Mascot " + n;
+    b.setAttribute("aria-pressed", settings.avatar === n ? "true" : "false");
+    b.innerHTML = '<img src="' + avatarSrc(n) + '" alt="Mascot ' + n + '">';
+    b.onclick = () => pickAvatar(n);
+    row.appendChild(b);
+  }
+}
+function pickAvatar(n) {
+  settings.avatar = [1,2,3,4,5].includes(n) ? n : 1;
+  saveSettings();
+  renderAvatarPicker();
+  squadSyncSoon();   // push new avatar to the squad
+  refreshBoard();    // reflect it on my own row right away
+  if (soundAudible()) sndPop();
 }
 function openSettings() { syncSettingsPanel(); document.getElementById("settingsOverlay").classList.remove("hidden"); }
 function closeSettings() { document.getElementById("settingsOverlay").classList.add("hidden"); }
@@ -1830,12 +2026,15 @@ function startBoard() {
   }, () => squadShow("squadOffline"));
   squadUnsubMembers = ref.collection("members").onSnapshot(snap => {
     const rows = [];
-    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), spent: Number(d.data().spentThisMonth) || 0 }));
+    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), spent: Number(d.data().spentThisMonth) || 0, avatar: d.data().avatar }));
+    squadLastRows = rows;
     renderBoard(rows);
   }, () => {});
   squadSyncSoon();
 }
 
+let squadLastRows = [];
+function refreshBoard() { if (squadLastRows.length) renderBoard(squadLastRows); }
 function renderBoard(rows) {
   rows.sort((a,b) => b.spent - a.spent || a.nickname.localeCompare(b.nickname));
   const list = document.getElementById("boardList");
@@ -1844,6 +2043,8 @@ function renderBoard(rows) {
   const medals = ["🥇","🥈","🥉"];
   rows.forEach((r, i) => {
     const isMe = squadUser && r.uid === squadUser.uid;
+    /* my own row reflects my current pick instantly; others use their synced avatar */
+    const av = isMe ? settings.avatar : r.avatar;
     const li = document.createElement("li");
     const cls = [];
     if (i < 3) cls.push("rank-" + (i + 1));
@@ -1851,6 +2052,7 @@ function renderBoard(rows) {
     li.className = cls.join(" ");
     li.innerHTML =
       '<span class="rank-badge">'+(medals[i] || (i+1))+'</span>'+
+      '<img class="board-avatar" src="'+avatarSrc(av)+'" alt="">'+
       '<span class="board-nick">'+esc(r.nickname)+(isMe ? ' <span class="you-tag">you</span>' : '')+'</span>'+
       '<b class="board-amt">'+peso(r.spent)+'</b>';
     list.appendChild(li);
@@ -1886,7 +2088,7 @@ function squadSpentNow() {
   const total = p.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
   return Math.round(total * 100) / 100;
 }
-/* push {nickname, spentThisMonth} to our member doc, debounced */
+/* push {nickname, spentThisMonth, avatar} to our member doc, debounced */
 function squadSyncSoon() {
   if (!squadLocalData) return;
   clearTimeout(squadSyncTimer);
@@ -1895,10 +2097,11 @@ function squadSyncSoon() {
       await squadAuth();
       if (!squadLocalData) return;
       const v = squadSpentNow();
-      if (v === squadLastPushed) return;
+      const sig = v + "|" + squadLocalData.nickname + "|" + settings.avatar;
+      if (sig === squadLastPushed) return;
       await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid)
-        .set({ nickname: squadLocalData.nickname, spentThisMonth: v });
-      squadLastPushed = v;
+        .set({ nickname: squadLocalData.nickname, spentThisMonth: v, avatar: settings.avatar });
+      squadLastPushed = sig;
     } catch (e) { /* offline — next change retries */ }
   }, 600);
 }
@@ -1928,7 +2131,7 @@ async function submitCreateSquad(ev) {
     await squadRef(code).set({ name, createdAt: Date.now(), ownerUID: user.uid });
     saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
     squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow() });
+    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow(), avatar: settings.avatar });
     document.getElementById("codeBig").textContent = code;
     squadShow("squadReveal");
   } catch (e) {
@@ -1954,7 +2157,7 @@ async function submitJoinSquad(ev) {
     }
     saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
     squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow() });
+    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow(), avatar: settings.avatar });
     startBoard();
   } catch (e) {
     squadShow("squadJoinForm");
