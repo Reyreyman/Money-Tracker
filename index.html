@@ -264,6 +264,24 @@ body.screen-shake { animation: scr-shake .45s linear; }
   .m-breather, #mascotImg, .mascot-box, .fx, body.screen-shake, #warnFlash.on, .caret { animation: none !important; }
 }
 
+/* ---------- daily check-in streak ---------- */
+.streak-card { background: #FFF1E3; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.streak-main { display: flex; align-items: center; gap: 14px; flex: 1; min-width: 200px; }
+.streak-flame { font-size: 46px; line-height: 1; flex-shrink: 0; transform-origin: 50% 100%; }
+.streak-flame.pop { animation: streak-pop .6s ease; }
+@keyframes streak-pop { 0%,100% { transform: scale(1) rotate(0); } 30% { transform: scale(1.35) rotate(-8deg); } 60% { transform: scale(1.15) rotate(6deg); } }
+.streak-num { font-family: 'Baloo 2'; font-size: 30px; font-weight: 800; line-height: 1.05; }
+.streak-best { font-weight: 800; font-size: 13px; color: #8A8398; margin-top: 3px; }
+.checkin-btn {
+  border: 3px solid #2D2A3E; border-radius: 16px; background: #FFC53D; color: #2D2A3E;
+  font-family: 'Baloo 2'; font-size: 18px; font-weight: 800; padding: 11px 20px; cursor: pointer;
+  box-shadow: 4px 4px 0 #2D2A3E; transition: transform .1s ease, box-shadow .1s ease;
+}
+.checkin-btn:hover { transform: translate(-2px,-2px); box-shadow: 6px 6px 0 #2D2A3E; }
+.checkin-btn:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #2D2A3E; }
+.checkin-done { margin: 0; font-family: 'Baloo 2'; font-weight: 800; font-size: 17px; color: #3ECF8E; }
+@media (prefers-reduced-motion: reduce) { .streak-flame.pop { animation: none; } }
+
 .empty { text-align: center; padding: 40px 20px; font-weight: 700; color: #6C6680; }
 .empty-emoji { font-size: 40px; margin-bottom: 8px; }
 .foot { text-align: center; color: #B5AC9A; font-weight: 700; font-size: 13px; margin-top: 8px; }
@@ -310,6 +328,18 @@ body.screen-shake { animation: scr-shake .45s linear; }
       <div class="sticker s-rose"><div class="stat-label">Today</div><div class="stat-num" id="statToday">₱0</div></div>
       <div class="sticker s-sun"><div class="stat-label">This week</div><div class="stat-num" id="statWeek">₱0</div></div>
       <div class="sticker s-mint"><div class="stat-label">Selected range</div><div class="stat-num" id="statRange">₱0</div></div>
+    </section>
+
+    <section class="card streak-card" id="streakCard">
+      <div class="streak-main">
+        <div class="streak-flame" id="streakFlame">🔥</div>
+        <div class="streak-info">
+          <div class="streak-num" id="streakNum">0 day streak!</div>
+          <div class="streak-best" id="streakBest">Best: 0 days</div>
+        </div>
+      </div>
+      <button class="checkin-btn" id="checkinBtn">I'm here today ✅</button>
+      <p class="checkin-done hidden" id="checkinDone">Nice, you checked in today! 🎉</p>
     </section>
 
     <section class="card mascot-card" id="mascotCard">
@@ -478,6 +508,7 @@ function newProfileObj(name) {
     lastUsed: Date.now(),
     entries: [],
     customCats: [],
+    checkins: [],
   };
 }
 
@@ -635,6 +666,7 @@ async function openProfile(id) {
   renderFilterChips();
   renderAll();
   mascotInit();
+  renderStreak();
 }
 
 function renderCatChips() {
@@ -880,6 +912,8 @@ async function addEntry() {
   const amt = parseFloat(amtEl.value);
   if (!amt || amt <= 0) { amtEl.focus(); return; }
   const oldStage = stageFor(monthTotal());
+  current.checkins = current.checkins || [];
+  const streakBefore = computeStreak(current.checkins);
   current.entries.unshift({
     id: Date.now() + "-" + Math.random().toString(36).slice(2,7),
     amount: Math.round(amt*100)/100,
@@ -887,6 +921,8 @@ async function addEntry() {
     note: noteEl.value.trim(),
     date: dateEl.value || todayStr(),
   });
+  /* adding a spend counts as today's check-in too */
+  if (!current.checkins.includes(todayStr())) current.checkins.push(todayStr());
   await saveCurrent();
   amtEl.value = ""; noteEl.value = ""; catTouched = false;
   const btn = document.getElementById("addBtn");
@@ -894,6 +930,8 @@ async function addEntry() {
   setTimeout(() => { btn.classList.remove("boop"); btn.textContent = "Add it"; }, 900);
   renderAll();
   mascotOnSpend(Math.round(amt*100)/100, oldStage, stageFor(monthTotal()));
+  renderStreak();
+  if (computeStreak(current.checkins) > streakBefore) celebrateStreak();
 }
 
 /* ================= reset ================= */
@@ -1103,10 +1141,78 @@ function mascotStop() {
   clearInterval(typeTimer);
 }
 
+/* ================= daily check-in streak ================= */
+/* A day counts as checked in if the profile has that date in `checkins`, added
+   either by tapping the check-in button or by adding any spend that day. */
+const dayKey = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const hasCheckedInToday = () => !!current && (current.checkins || []).includes(todayStr());
+
+/* Consecutive days ending today. Today's check-in isn't required to keep the run
+   alive during the current day: if today isn't checked in yet but yesterday is,
+   the streak still shows (and tapping today extends it). A fully missed day
+   between then and now drops it to 0. */
+function computeStreak(checkins) {
+  const set = new Set(checkins || []);
+  const cursor = new Date(); cursor.setHours(0,0,0,0);
+  if (!set.has(dayKey(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+    if (!set.has(dayKey(cursor))) return 0;
+  }
+  let n = 0;
+  while (set.has(dayKey(cursor))) { n++; cursor.setDate(cursor.getDate() - 1); }
+  return n;
+}
+/* Longest consecutive run ever recorded (DST-safe: compares by calendar day). */
+function bestStreak(checkins) {
+  const days = [...new Set(checkins || [])].sort();
+  let best = 0, run = 0, prevKey = null;
+  for (const s of days) {
+    if (prevKey) {
+      const pd = parseDate(prevKey); pd.setDate(pd.getDate() + 1);
+      run = (dayKey(pd) === s) ? run + 1 : 1;
+    } else run = 1;
+    if (run > best) best = run;
+    prevKey = s;
+  }
+  return best;
+}
+
+function renderStreak() {
+  if (!current) return;
+  current.checkins = current.checkins || [];
+  const s = computeStreak(current.checkins);
+  const best = Math.max(bestStreak(current.checkins), s);
+  document.getElementById("streakNum").textContent = s === 0 ? "Start your streak!" : s + " day streak!";
+  document.getElementById("streakBest").textContent = "Best: " + best + " day" + (best === 1 ? "" : "s");
+  const done = hasCheckedInToday();
+  document.getElementById("checkinBtn").classList.toggle("hidden", done);
+  document.getElementById("checkinDone").classList.toggle("hidden", !done);
+}
+
+function celebrateStreak() {
+  const f = document.getElementById("streakFlame");
+  f.classList.remove("pop"); void f.offsetWidth; f.classList.add("pop");
+  confettiBurst(); // reuse the existing confetti helper (spawnFx into the mascot fx layer)
+}
+
+/* Record today's check-in (idempotent). Celebrates only when the streak grows,
+   so the first check-in/spend of the day pops but later ones don't. */
+async function checkInToday() {
+  if (!current) return;
+  current.checkins = current.checkins || [];
+  if (current.checkins.includes(todayStr())) { renderStreak(); return; }
+  const before = computeStreak(current.checkins);
+  current.checkins.push(todayStr());
+  await saveCurrent();
+  renderStreak();
+  if (computeStreak(current.checkins) > before) celebrateStreak();
+}
+
 /* ================= init ================= */
 document.getElementById("addBtn").onclick = addEntry;
 document.getElementById("backBtn").onclick = showHome;
 document.getElementById("resetBtn").onclick = resetCurrent;
+document.getElementById("checkinBtn").onclick = checkInToday;
 document.getElementById("inNote").addEventListener("input", e => {
   if (catTouched) return;
   const g = guessCategory(e.target.value);
