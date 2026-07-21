@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>PisoPal — money tracker</title>
+<title>PisoPal — stats</title>
 <meta name="theme-color" content="#FBF3E4">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -130,23 +130,6 @@ h1, h2 { font-family: 'Baloo 2', cursive; margin: 0; }
 .s-mint { background: #CFF5E4; transform: rotate(-1deg); }
 .stat-label { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted-2); }
 .stat-num { font-family: 'Baloo 2'; font-size: 26px; font-weight: 800; }
-
-/* ---------- view-stats pill ---------- */
-.stats-link-row { display: flex; justify-content: center; margin: -8px 0 24px; }
-.stats-link {
-  border: 3px solid var(--ink); background: var(--surface); color: var(--ink);
-  border-radius: 999px; padding: 11px 26px; font-family: 'Baloo 2', cursive;
-  font-weight: 800; font-size: 17px; cursor: pointer;
-  box-shadow: 4px 4px 0 var(--shadow), 0 0 0 3px rgba(90,177,247,.18);
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-.stats-link:hover {
-  transform: translate(-2px,-2px);
-  box-shadow: 6px 6px 0 var(--shadow), 0 0 14px 3px rgba(90,177,247,.5);
-}
-.stats-link:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 var(--shadow), 0 0 0 3px rgba(90,177,247,.18); }
-:root[data-theme="dark"] .stats-link { box-shadow: 4px 4px 0 var(--shadow), 0 0 0 3px rgba(217,119,87,.22); }
-:root[data-theme="dark"] .stats-link:hover { box-shadow: 6px 6px 0 var(--shadow), 0 0 14px 3px rgba(217,119,87,.5); }
 
 .card {
   background: var(--surface); border: 3px solid var(--ink); border-radius: 22px;
@@ -540,204 +523,35 @@ body.screen-shake { animation: scr-shake .45s linear; }
 .sw-light-1 { background: #FBF3E4; } .sw-light-2 { background: #FF6B6B; } .sw-light-3 { background: #FFC53D; }
 .sw-dark-1 { background: #1C1B19; } .sw-dark-2 { background: #D97757; } .sw-dark-3 { background: #EDE6D6; }
 </style>
+
+<style>
+/* ---------- stats page ---------- */
+.back-btn { text-decoration: none; display: inline-block; }
+.stats-page-head { text-align: center; margin: 4px 0 22px; }
+.stats-page-head h1 { font-family: 'Baloo 2', cursive; font-size: 34px; font-weight: 800; letter-spacing: .5px; }
+.stats-page-head h1 .tilt { display: inline-block; transform: rotate(-4deg); }
+.stats-page-head .tagline { margin: 8px 0 0; font-weight: 700; color: var(--muted); }
+#notFound a { color: var(--accent); font-weight: 800; }
+</style>
 </head>
 <body>
-<button class="settings-gear" id="settingsGear" title="Settings" aria-label="Settings">⚙️</button>
 <div class="app">
-
-  <!-- ================= HOME VIEW ================= -->
-  <div id="homeView">
-    <header class="head">
-      <h1>Piso<span class="tilt">Pal</span>
-        <svg class="squiggle" viewBox="0 0 220 14" aria-hidden="true">
-          <path d="M3 9 Q 20 2, 38 8 T 74 8 T 110 8 T 146 8 T 182 8 T 217 7"
-            fill="none" stroke="#FF6B6B" stroke-width="4.5" stroke-linecap="round"/>
-        </svg>
-      </h1>
-      <p class="tagline">your spending, but make it cute</p>
-    </header>
-
-    <div class="tab-row">
-      <button class="tab-btn tab-on" id="tabTrackers">🏠 My Trackers</button>
-      <button class="tab-btn" id="tabSquad">🏆 Squad</button>
-    </div>
-
-    <div id="trackersPane">
-      <p class="home-empty" id="homeEmpty">No trackers yet. Make your first one below!</p>
-      <div class="home-grid" id="homeGrid"></div>
-      <footer class="foot">Saved on this device automatically ♥</footer>
-    </div>
-
-    <!-- ================= SQUAD TAB ================= -->
-    <div id="squadPane" class="hidden">
-
-      <div class="card hidden" id="squadLoading">
-        <p class="none">Connecting to your squad…</p>
-      </div>
-
-      <div class="card hidden" id="squadOffline">
-        <h2>Can't reach the squad server 🛰️</h2>
-        <p class="sub">Squads need an internet connection. Your personal trackers still work offline — try again once you're back online.</p>
-        <button class="back-btn" id="squadRetryBtn">↻ Try again</button>
-      </div>
-
-      <div id="squadSetup" class="hidden">
-        <p class="home-empty">Team up with friends and see who saves the most each month!</p>
-        <div class="squad-choice">
-          <div class="profile-card squad-choice-card" id="squadShowCreate">
-            <div class="squad-emoji">🎉</div>
-            <div class="p-name">Create a Squad</div>
-            <div class="p-meta">Start fresh and invite your friends</div>
-          </div>
-          <div class="profile-card squad-choice-card" id="squadShowJoin">
-            <div class="squad-emoji">🔑</div>
-            <div class="p-name">Join a Squad</div>
-            <div class="p-meta">Got a 6-character code? Hop in!</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card form-card squad-form hidden" id="squadCreateForm">
-        <h2>Create a Squad</h2>
-        <p class="sub">Pick a squad name and what your friends will call you.</p>
-        <form id="createSquadForm">
-          <div class="field">
-            <label for="sqCreateName">Squad name</label>
-            <input id="sqCreateName" type="text" maxlength="24" placeholder="e.g. Ipon Warriors" autocomplete="off">
-          </div>
-          <div class="field">
-            <label for="sqCreateNick">Your nickname</label>
-            <input id="sqCreateNick" type="text" maxlength="16" placeholder="e.g. Rey" autocomplete="off">
-          </div>
-          <p class="squad-err hidden" id="sqCreateErr"></p>
-          <div class="modal-actions">
-            <button type="button" class="modal-cancel" id="sqCreateBack">← Back</button>
-            <button type="submit" class="modal-ok">Create ✨</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card form-card squad-form hidden" id="squadJoinForm">
-        <h2>Join a Squad</h2>
-        <p class="sub">Type the code your friend shared with you.</p>
-        <form id="joinSquadForm">
-          <div class="field">
-            <label for="sqJoinCode">Squad code</label>
-            <input id="sqJoinCode" class="code-input" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" autocapitalize="characters" spellcheck="false">
-          </div>
-          <div class="field">
-            <label for="sqJoinNick">Your nickname</label>
-            <input id="sqJoinNick" type="text" maxlength="16" placeholder="e.g. Rey" autocomplete="off">
-          </div>
-          <p class="squad-err hidden" id="sqJoinErr"></p>
-          <div class="modal-actions">
-            <button type="button" class="modal-cancel" id="sqJoinBack">← Back</button>
-            <button type="submit" class="modal-ok">Join 🎉</button>
-          </div>
-        </form>
-      </div>
-
-      <div class="card hidden" id="squadReveal">
-        <h2>Squad created! 🎊</h2>
-        <p class="sub">Share this code with your friends — they tap "Join a Squad" and type it in.</p>
-        <div class="code-big" id="codeBig"></div>
-        <div class="modal-actions">
-          <button type="button" class="modal-cancel" id="codeCopyBtn">📋 Copy code</button>
-          <button type="button" class="modal-ok" id="codeDoneBtn">To the leaderboard →</button>
-        </div>
-      </div>
-
-      <div id="squadBoard" class="hidden">
-        <div class="card">
-          <h2><span id="squadNameLabel"></span>
-            <button class="icon-btn hidden" id="squadRenameBtn" title="Rename squad">✎</button></h2>
-          <p class="sub">Code: <b id="squadCodeSmall"></b>
-            <button class="icon-btn" id="squadCodeCopy" title="Copy code">📋</button>
-            · ranked by spending this month</p>
-          <ul class="board-list" id="boardList"></ul>
-          <p class="none hidden" id="boardEmpty">Nobody on the board yet — share the code!</p>
-        </div>
-        <div class="card form-card">
-          <h2>Your spending setup</h2>
-          <p class="sub">Pick which tracker to count. Only your nickname and how much it spent this month are shared with the squad.</p>
-          <div class="field">
-            <label>Linked tracker</label>
-            <div class="cat-row" id="squadTrackerRow" style="margin:8px 0 0"></div>
-          </div>
-        </div>
-        <div class="danger-row"><button class="danger-btn" id="squadLeaveBtn">👋 Leave this squad</button></div>
-      </div>
-
-      <footer class="foot">Squads sync online · your spends stay on this device ♥</footer>
-    </div>
+  <div class="topbar">
+    <a class="back-btn" id="backBtn" href="index.html">← Back</a>
+    <span class="profile-badge" id="profileBadge"></span>
   </div>
 
-  <!-- ================= TRACKER VIEW ================= -->
-  <div id="appView" class="hidden">
-    <div class="topbar">
-      <button class="back-btn" id="backBtn">← My trackers</button>
-      <span class="profile-badge" id="profileBadge"></span>
-    </div>
+  <div class="stats-page-head">
+    <h1>Your stats <span class="tilt">📊</span></h1>
+    <p class="tagline">A closer look at where your pesos go.</p>
+  </div>
 
-    <section class="stats">
-      <div class="sticker s-rose"><div class="stat-label">Today</div><div class="stat-num" id="statToday">₱0</div></div>
-      <div class="sticker s-sun"><div class="stat-label">This week</div><div class="stat-num" id="statWeek">₱0</div></div>
-      <div class="sticker s-mint"><div class="stat-label">Selected range</div><div class="stat-num" id="statRange">₱0</div></div>
-    </section>
+  <div id="notFound" class="card empty hidden">
+    <div class="empty-emoji">🤔</div>
+    <p>Couldn't find that tracker. <a href="index.html">Head back home</a> and pick one.</p>
+  </div>
 
-    <div class="stats-link-row">
-      <button class="stats-link" id="viewStatsBtn" type="button">📊 View Stats</button>
-    </div>
-
-    <section class="card streak-card" id="streakCard">
-      <div class="streak-main">
-        <div class="streak-flame" id="streakFlame">🔥</div>
-        <div class="streak-info">
-          <div class="streak-num" id="streakNum">0 day streak!</div>
-          <div class="streak-best" id="streakBest">Best: 0 days</div>
-        </div>
-      </div>
-      <button class="checkin-btn" id="checkinBtn">I'm here today ✅</button>
-      <p class="checkin-done hidden" id="checkinDone">Nice, you checked in today! 🎉</p>
-    </section>
-
-    <section class="card mascot-card" id="mascotCard">
-      <div class="p-actions">
-        <button class="icon-btn" id="soundBtn" title="Muted (tap for sound)">🔇</button>
-      </div>
-      <div class="mascot-wrap">
-        <div class="mascot-box" id="mascotBox">
-          <div class="m-breather" id="mascotBreather">
-            <img id="mascotImg" src="mascot-1.png" alt="Your PisoPal buddy">
-          </div>
-          <div class="fx-layer" id="fxLayer"></div>
-        </div>
-        <div class="bubble"><span id="bubbleText"></span><span class="caret">▌</span></div>
-      </div>
-    </section>
-
-    <section class="card form-card">
-      <h2>Add a spend</h2>
-      <div class="form-grid">
-        <div class="field">
-          <label for="inAmount">Amount</label>
-          <div class="amount-wrap"><span>₱</span>
-            <input id="inAmount" type="number" inputmode="decimal" min="0" placeholder="0">
-          </div>
-        </div>
-        <div class="field">
-          <label for="inNote">What was it? <span class="hint">(I'll guess the category)</span></label>
-          <input id="inNote" type="text" placeholder="e.g. jeep fare, milk tea, netflix">
-        </div>
-        <div class="field">
-          <label for="inDate">Date</label>
-          <input id="inDate" type="date">
-        </div>
-      </div>
-      <div class="cat-row" id="catRow"></div>
-      <button class="add-btn" id="addBtn">Add it</button>
-    </section>
-
+  <div id="statsWrap" class="hidden">
     <section class="filter" id="filterRow">
       <span class="filter-label">Show me:</span>
       <span class="custom-dates" id="customDates">
@@ -745,102 +559,66 @@ body.screen-shake { animation: scr-shake .45s linear; }
       </span>
     </section>
 
-    <div class="card empty" id="emptyCard">
+    <div class="card empty hidden" id="emptyCard">
       <div class="empty-emoji">🌱</div>
-      <p>Nothing here yet. Add your first spend above and watch the charts grow.</p>
+      <p>No spends yet for this tracker. Add some on the tracker page and your stats will grow here.</p>
     </div>
 
     <div id="content" class="hidden">
+      <section class="card recap-card" id="recapCard">
+        <h2>This month's recap 📅</h2>
+        <p class="sub" id="recapMonth"></p>
+        <div class="recap-top">
+          <div class="recap-stat">
+            <div class="recap-label">Total spent</div>
+            <div class="recap-big" id="recapTotal">₱0</div>
+            <div class="recap-cmp" id="recapCompare"></div>
+          </div>
+          <div class="recap-stat">
+            <div class="recap-label">Biggest category</div>
+            <div class="recap-biggest" id="recapBiggest">—</div>
+          </div>
+        </div>
+        <div class="recap-break">
+          <div class="recap-label">By category</div>
+          <ul class="recap-list" id="recapList"></ul>
+          <p class="none hidden" id="recapNone">No spends yet this month.</p>
+        </div>
+      </section>
+
+      <section class="charts">
+        <div class="card chart-card">
+          <h2>Month by month</h2>
+          <p class="sub">Stacked by category. Tap or hover a bar for the breakdown.</p>
+          <div class="chart-box"><canvas id="barChart"></canvas></div>
+        </div>
+        <div class="card chart-card">
+          <h2>Where it went</h2>
+          <p class="sub">Categories in your selected range.</p>
+          <div class="pie-box"><canvas id="pieChart"></canvas></div>
+          <ul class="legend" id="pieLegend"></ul>
+          <p class="none hidden" id="pieNone">No spends in this range.</p>
+        </div>
+      </section>
+
       <section class="card">
-        <h2>Every spend <span class="count-badge" id="txnCount">0</span></h2>
-        <ul class="txns" id="txnList"></ul>
-        <p class="none hidden" id="txnNone">Nothing in this range.</p>
+        <h2>Weekly summary</h2>
+        <p class="sub">Each week runs Monday to Sunday.</p>
+        <ul class="weeks" id="weekList"></ul>
+        <p class="none hidden" id="weekNone">No weeks to show in this range.</p>
       </section>
     </div>
-
-    <div class="danger-row">
-      <button class="danger-btn" id="resetBtn">↺ Reset this tracker</button>
-    </div>
-    <footer class="foot">Saved on this device automatically ♥</footer>
   </div>
 
+  <footer class="foot">Same data as your tracker · stays on this device ♥</footer>
 </div>
-<div id="warnFlash"></div>
-
-<!-- ================= SETTINGS ================= -->
-<div class="modal-overlay hidden" id="settingsOverlay">
-  <div class="modal settings-panel" id="settingsPanel" role="dialog" aria-label="Settings">
-    <h2>Settings ⚙️</h2>
-
-    <div class="set-section">
-      <label>Sound volume</label>
-      <div class="vol-row">
-        <input type="range" id="volSlider" min="0" max="100" step="1" value="70" aria-label="Sound volume">
-        <span class="vol-val" id="volVal">70%</span>
-      </div>
-      <div class="mute-row">
-        <span>Mute all sounds</span>
-        <button type="button" class="toggle" id="muteToggle" aria-pressed="false">Off</button>
-      </div>
-    </div>
-
-    <div class="set-section">
-      <label>Background theme</label>
-      <div class="theme-row">
-        <div class="theme-opt sel" id="themeLight" role="button" tabindex="0">
-          <div class="theme-swatch"><i class="sw-light-1"></i><i class="sw-light-2"></i><i class="sw-light-3"></i></div>
-          <div class="theme-name">Default</div>
-        </div>
-        <div class="theme-opt" id="themeDark" role="button" tabindex="0">
-          <div class="theme-swatch"><i class="sw-dark-1"></i><i class="sw-dark-2"></i><i class="sw-dark-3"></i></div>
-          <div class="theme-name">Dark</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="set-section">
-      <label>Your leaderboard mascot</label>
-      <p class="hint" style="margin:0 0 8px">Shown next to your name on the squad leaderboard.</p>
-      <div class="avatar-row" id="avatarRow"></div>
-    </div>
-
-    <div class="modal-actions">
-      <button type="button" class="modal-ok" id="settingsDone">Done</button>
-    </div>
-  </div>
-</div>
-
-<!-- ================= CATEGORY PICKER (edit an existing expense's category) ================= -->
-<div class="modal-overlay hidden" id="catEditOverlay">
-  <div class="modal" id="catEditPanel" role="dialog" aria-label="Pick a category">
-    <h2>Pick a category</h2>
-    <p class="modal-msg" id="catEditMsg"></p>
-    <div class="cat-row" id="catEditRow"></div>
-    <div class="modal-actions">
-      <button type="button" class="modal-cancel" id="catEditCancel">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ================= MODAL (replaces prompt/confirm/alert for in-app browsers) ================= -->
-<div class="modal-overlay hidden" id="modalOverlay">
-  <form class="modal" id="modalForm">
-    <h2 id="modalTitle"></h2>
-    <p class="modal-msg" id="modalMsg"></p>
-    <input type="text" id="modalInput" autocomplete="off">
-    <div class="modal-actions">
-      <button type="button" class="modal-cancel" id="modalCancel">Cancel</button>
-      <button type="submit" class="modal-ok" id="modalOk">OK</button>
-    </div>
-  </form>
-</div>
-
-<!-- Firebase (compat builds so everything stays in this one file; if these fail to
-     load — offline, blocked CDN — the Squad tab shows a friendly offline screen) -->
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
+/* ================= PisoPal · stats page =================
+   Reads the SAME IndexedDB (pisopal-db / profiles) as index.html — no
+   duplicate or forked data source. The profile to show is passed in the
+   URL as ?id=<profileId>. Recap, charts and the weekly summary are the
+   exact same renderers that used to live on index.html. */
+
 /* ================= constants ================= */
 const BASE_CATEGORIES = [
   { id:"food",          name:"Food",      emoji:"🍜", color:"#FF6B6B" },
@@ -853,22 +631,12 @@ const BASE_CATEGORIES = [
   { id:"other",         name:"Other",     emoji:"✨", color:"#FF9F68" },
 ];
 const EXTRA_COLORS = ["#F59E0B","#818CF8","#FB923C","#A3E635","#F87171","#2DD4BF"];
-const KEYWORDS = {
-  food:["food","eat","lunch","dinner","breakfast","snack","coffee","milk tea","milktea","jollibee","mcdo","kfc","rice","grocery","groceries","canteen","merienda","drink"],
-  transport:["jeep","grab","angkas","bus","train","lrt","mrt","fare","gas","toll","taxi","tricycle","commute"],
-  bills:["bill","bills","electric","meralco","water bill","rent","landlord","internet","insurance","utilities","dues"],
-  shopping:["shop","shopping","shopee","lazada","clothes","shirt","shoes","mall","uniqlo","haul","makeup","skincare","gift"],
-  entertainment:["movie","cinema","game","genshin","welkin","concert","arcade","karaoke","gig"],
-  subscriptions:["netflix","spotify","youtube","prime","subscription","subs","wifi","data","load","icloud","canva"],
-  school:["tuition","print","printing","photocopy","xerox","project","school","notebook","pen","requirements","org fee"],
-};
 const PRESETS = [
   ["thisMonth","This month"],["lastMonth","Last month"],["30d","Last 30 days"],
   ["year","This year"],["all","All time"],["custom","Custom"],
 ];
-const PROFILE_EMOJIS = ["🐣","🌸","🍡","🫧","🍋","🌈","🐝","🍓","🌵","🫐","🍩","⭐"];
 
-/* ================= IndexedDB ================= */
+/* ================= IndexedDB (same db as index.html) ================= */
 const DB_NAME = "pisopal-db", STORE = "profiles";
 function openDB() {
   return new Promise((res, rej) => {
@@ -886,130 +654,6 @@ async function dbGetAll() {
     q.onerror = () => rej(q.error);
   });
 }
-async function dbPut(profile) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const t = db.transaction(STORE, "readwrite");
-    t.objectStore(STORE).put(profile);
-    t.oncomplete = () => res();
-    t.onerror = () => rej(t.error);
-  });
-}
-async function dbDelete(id) {
-  const db = await openDB();
-  return new Promise((res, rej) => {
-    const t = db.transaction(STORE, "readwrite");
-    t.objectStore(STORE).delete(id);
-    t.oncomplete = () => res();
-    t.onerror = () => rej(t.error);
-  });
-}
-
-/* ================= modal (replaces prompt/confirm/alert, which in-app browsers block) ================= */
-const modalEls = {
-  overlay: document.getElementById("modalOverlay"),
-  form: document.getElementById("modalForm"),
-  title: document.getElementById("modalTitle"),
-  msg: document.getElementById("modalMsg"),
-  input: document.getElementById("modalInput"),
-  ok: document.getElementById("modalOk"),
-  cancel: document.getElementById("modalCancel"),
-};
-let modalResolve = null;
-let modalHasInput = false;
-
-function openModal(opts) {
-  if (modalResolve) closeModal(modalHasInput ? null : false);
-  return new Promise(resolve => {
-    modalResolve = resolve;
-    modalHasInput = !!opts.input;
-    modalEls.title.textContent = opts.title || "";
-    modalEls.msg.textContent = opts.message || "";
-    modalEls.msg.classList.toggle("hidden", !opts.message);
-    modalEls.input.classList.toggle("hidden", !opts.input);
-    modalEls.input.value = opts.initial || "";
-    modalEls.input.placeholder = opts.placeholder || "";
-    modalEls.input.maxLength = opts.maxLength || 24;
-    modalEls.ok.textContent = opts.okText || "OK";
-    modalEls.ok.classList.toggle("danger", !!opts.danger);
-    modalEls.cancel.classList.toggle("hidden", !!opts.alertOnly);
-    modalEls.overlay.classList.remove("hidden");
-    if (opts.input) setTimeout(() => { modalEls.input.focus(); modalEls.input.select(); }, 60);
-    else modalEls.ok.focus();
-  });
-}
-function closeModal(result) {
-  modalEls.overlay.classList.add("hidden");
-  const r = modalResolve; modalResolve = null;
-  if (r) r(result);
-}
-modalEls.form.addEventListener("submit", e => {
-  e.preventDefault();
-  if (!modalResolve) return;
-  if (modalHasInput) {
-    const v = modalEls.input.value.trim();
-    if (!v) { modalEls.input.focus(); return; }
-    closeModal(v);
-  } else closeModal(true);
-});
-modalEls.cancel.addEventListener("click", () => closeModal(modalHasInput ? null : false));
-modalEls.overlay.addEventListener("click", e => {
-  if (e.target === modalEls.overlay) closeModal(modalHasInput ? null : false);
-});
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && modalResolve) closeModal(modalHasInput ? null : false);
-});
-
-/* prompt() replacement: resolves to trimmed text, or null if cancelled */
-const modalPrompt = (title, opts = {}) => openModal({ input: true, ...opts, title });
-/* confirm() replacement: resolves to true/false */
-const modalConfirm = (title, message, opts = {}) => openModal({ ...opts, title, message });
-/* alert() replacement: resolves when dismissed */
-const modalAlert = (title, message) => openModal({ title, message, alertOnly: true, okText: "OK" });
-
-/* ================= state ================= */
-let profiles = [];        // all profiles (metadata + data)
-let current = null;       // the open profile object
-let selectedCat = "food";
-let catTouched = false;
-let preset = "thisMonth";
-
-function newProfileObj(name) {
-  return {
-    id: "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    name: name,
-    emoji: PROFILE_EMOJIS[Math.floor(Math.random() * PROFILE_EMOJIS.length)],
-    createdAt: Date.now(),
-    lastUsed: Date.now(),
-    entries: [],
-    customCats: [],
-    checkins: [],
-  };
-}
-
-async function saveCurrent() {
-  if (!current) return;
-  try { await dbPut(current); }
-  catch (e) { modalAlert("Couldn't save", "Your browser storage might be blocked."); }
-}
-
-/* one-time import of the old localStorage save, so nothing is lost */
-async function migrateOldSave() {
-  try {
-    if (localStorage.getItem("pisopal-migrated")) return;
-    const raw = localStorage.getItem("pisopal-v1");
-    if (raw) {
-      const d = JSON.parse(raw);
-      if (Array.isArray(d.entries) && d.entries.length) {
-        const p = newProfileObj("My Tracker");
-        p.entries = d.entries;
-        p.customCats = Array.isArray(d.customCats) ? d.customCats : [];
-        await dbPut(p);
-      }
-    }
-    localStorage.setItem("pisopal-migrated", "yes");
-  } catch (e) { /* nothing to migrate */ }
-}
 
 /* ================= helpers ================= */
 const peso = n => "₱" + Number(n||0).toLocaleString("en-PH",{maximumFractionDigits:2});
@@ -1018,12 +662,33 @@ const parseDate = s => { const [y,m,d]=s.split("-").map(Number); return new Date
 const monthLabel = s => { const d=parseDate(s+"-01"); return d.toLocaleString("en",{month:"short"})+" '"+String(d.getFullYear()).slice(2); };
 const weekStart = date => { const d=new Date(date); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); d.setHours(0,0,0,0); return d; };
 const fmtShort = d => d.toLocaleString("en",{month:"short",day:"numeric"});
-const fmtLastUsed = ts => { const d=new Date(ts); return d.toLocaleString("en",{month:"short",day:"numeric",year:"numeric"}); };
-const allCats = () => [...BASE_CATEGORIES, ...(current ? current.customCats : [])];
+const allCats = () => [...BASE_CATEGORIES, ...(current && current.customCats ? current.customCats : [])];
 /* unknown or missing category (old data) falls back to "Other" so nothing breaks */
 const catById = id => allCats().find(c => c.id === id) || BASE_CATEGORIES.find(c => c.id === "other");
 const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
+let current = null;
+let preset = "thisMonth";
+let barChart = null, pieChart = null;
+
+/* ================= settings / theme (read-only mirror of index.html) ================= */
+const SET_KEY = "pisopal-settings";
+function loadSettings() {
+  let s = {};
+  try { s = JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) {}
+  return { theme: s.theme === "dark" ? "dark" : "light" };
+}
+let settings = loadSettings();
+const getTheme = () => settings.theme;
+function applyTheme(theme) {
+  settings.theme = theme === "dark" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", settings.theme);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", settings.theme === "dark" ? "#1C1B19" : "#FBF3E4");
+}
+applyTheme(settings.theme); // apply saved theme before content paints
+
+/* ================= range filter ================= */
 function currentRange() {
   const now = new Date(); now.setHours(23,59,59,999);
   let from = null, to = now;
@@ -1048,128 +713,6 @@ function filteredEntries() {
     return true;
   });
 }
-
-/* ================= home view ================= */
-function showHome() {
-  current = null;
-  mascotStop();
-  document.getElementById("appView").classList.add("hidden");
-  document.getElementById("homeView").classList.remove("hidden");
-  renderHome();
-}
-
-function renderHome() {
-  const grid = document.getElementById("homeGrid");
-  grid.innerHTML = "";
-  const sorted = [...profiles].sort((a,b) => b.lastUsed - a.lastUsed);
-  document.getElementById("homeEmpty").classList.toggle("hidden", sorted.length > 0);
-
-  sorted.forEach(p => {
-    const card = document.createElement("div");
-    card.className = "profile-card";
-    card.innerHTML =
-      '<div class="p-emoji">'+p.emoji+'</div>'+
-      '<div class="p-name">'+esc(p.name)+'</div>'+
-      '<div class="p-meta">'+p.entries.length+' spend'+(p.entries.length!==1?'s':'')+' · last used '+fmtLastUsed(p.lastUsed)+'</div>';
-    card.onclick = () => openProfile(p.id);
-
-    const actions = document.createElement("div");
-    actions.className = "p-actions";
-
-    const ren = document.createElement("button");
-    ren.className = "icon-btn"; ren.title = "Rename"; ren.textContent = "✎";
-    ren.onclick = async (ev) => {
-      ev.stopPropagation();
-      const name = await modalPrompt("Rename tracker", { initial: p.name, placeholder: "Tracker name", okText: "Save" });
-      if (!name) return;
-      p.name = name.slice(0, 24);
-      await dbPut(p);
-      renderHome();
-    };
-
-    const del = document.createElement("button");
-    del.className = "icon-btn"; del.title = "Delete"; del.textContent = "🗑";
-    del.onclick = async (ev) => {
-      ev.stopPropagation();
-      if (!await modalConfirm('Delete "'+p.name+'"?', "This erases the tracker and ALL its data forever. This cannot be undone.", { okText: "Delete", danger: true })) return;
-      await dbDelete(p.id);
-      profiles = profiles.filter(x => x.id !== p.id);
-      renderHome();
-      squadSyncSoon();
-    };
-
-    actions.appendChild(ren);
-    actions.appendChild(del);
-    card.appendChild(actions);
-    grid.appendChild(card);
-  });
-
-  const add = document.createElement("div");
-  add.className = "profile-card new-card";
-  add.innerHTML = '<div class="new-plus">+</div><div class="new-label">New Profile</div>';
-  add.onclick = async () => {
-    const name = await modalPrompt("New tracker", { placeholder: "e.g. Me, Mom, Trip Fund", okText: "Create" });
-    if (!name) return;
-    const p = newProfileObj(name.slice(0, 24));
-    profiles.push(p);
-    await dbPut(p);
-    openProfile(p.id);
-  };
-  grid.appendChild(add);
-}
-
-/* ================= tracker view ================= */
-async function openProfile(id) {
-  current = profiles.find(p => p.id === id);
-  if (!current) return;
-  current.lastUsed = Date.now();
-  await saveCurrent();
-
-  selectedCat = "food";
-  catTouched = false;
-  preset = "thisMonth";
-
-  document.getElementById("homeView").classList.add("hidden");
-  document.getElementById("appView").classList.remove("hidden");
-  document.getElementById("profileBadge").textContent = current.emoji + " " + current.name;
-  document.getElementById("inAmount").value = "";
-  document.getElementById("inNote").value = "";
-  document.getElementById("inDate").value = todayStr();
-  document.getElementById("inDate").max = todayStr();
-
-  renderCatChips();
-  renderFilterChips();
-  renderAll();
-  mascotInit();
-  renderStreak();
-}
-
-function renderCatChips() {
-  const row = document.getElementById("catRow");
-  row.innerHTML = "";
-  allCats().forEach(c => {
-    const b = document.createElement("button");
-    b.className = "chip" + (selectedCat===c.id ? " chip-on" : "");
-    if (selectedCat===c.id) b.style.background = c.color;
-    b.textContent = c.emoji + " " + c.name;
-    b.onclick = () => { selectedCat = c.id; catTouched = true; renderCatChips(); };
-    row.appendChild(b);
-  });
-  const add = document.createElement("button");
-  add.className = "chip chip-new";
-  add.textContent = "+ New";
-  add.onclick = async () => {
-    const name = await modalPrompt("New category", { placeholder: "e.g. Pets, Gifts", okText: "Add", maxLength: 14 });
-    if (!name) return;
-    const clean = name.slice(0,14);
-    const id = "c_" + clean.toLowerCase().replace(/[^a-z0-9]/g,"") + "_" + Date.now().toString(36);
-    current.customCats.push({ id, name: clean, emoji:"🏷️", color: EXTRA_COLORS[current.customCats.length % EXTRA_COLORS.length] });
-    selectedCat = id; catTouched = true;
-    await saveCurrent(); renderCatChips();
-  };
-  row.appendChild(add);
-}
-
 function renderFilterChips() {
   const row = document.getElementById("filterRow");
   row.querySelectorAll(".chip").forEach(el => el.remove());
@@ -1184,837 +727,243 @@ function renderFilterChips() {
   customSpan.classList.toggle("show", preset==="custom");
 }
 
-function renderStats(filtered) {
-  const t = todayStr();
-  const todayTotal = current.entries.filter(e => e.date===t).reduce((s,e)=>s+e.amount,0);
-  const ws = weekStart(new Date());
-  const weekTotal = current.entries.filter(e => parseDate(e.date) >= ws).reduce((s,e)=>s+e.amount,0);
-  const rangeTotal = filtered.reduce((s,e)=>s+e.amount,0);
-  document.getElementById("statToday").textContent = peso(todayTotal);
-  document.getElementById("statWeek").textContent = peso(weekTotal);
-  document.getElementById("statRange").textContent = peso(rangeTotal);
-  return rangeTotal;
+/* ================= chart colors follow the active theme ================= */
+function themeVar(name, fallback) {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name);
+  return (v && v.trim()) || fallback;
 }
-
-/* Recap, month-by-month + donut charts and the weekly summary moved to
-   stats.html (a separate page reading the same IndexedDB). */
-
-function renderTxns(filtered) {
-  const list = document.getElementById("txnList");
-  const noneEl = document.getElementById("txnNone");
-  document.getElementById("txnCount").textContent = filtered.length;
-  list.innerHTML = "";
-  noneEl.classList.toggle("hidden", filtered.length > 0);
-  [...filtered]
-    .sort((a,b) => b.date.localeCompare(a.date) || String(b.id).localeCompare(String(a.id)))
-    .slice(0,60)
-    .forEach(e => {
-      const c = catById(e.category);
-      const li = document.createElement("li");
-      li.innerHTML =
-        '<span class="txn-emoji editable" title="Tap to change category" style="background:'+c.color+'33;border-color:'+c.color+'">'+c.emoji+'</span>'+
-        '<span class="txn-main"><span class="txn-note">'+esc(e.note || c.name)+'</span>'+
-        '<span class="txn-date">'+fmtShort(parseDate(e.date))+' · '+esc(c.name)+'</span></span>'+
-        '<b class="txn-amt">'+peso(e.amount)+'</b>';
-      li.querySelector(".txn-emoji").onclick = () => openCatEdit(e);
-      const del = document.createElement("button");
-      del.className = "del"; del.title = "Delete"; del.textContent = "✕";
-      del.onclick = async () => {
-        if (!await modalConfirm("Delete this spend?", peso(e.amount) + " · " + (e.note || catById(e.category).name), { okText: "Delete", danger: true })) return;
-        current.entries = current.entries.filter(x => x.id !== e.id);
-        await saveCurrent(); renderAll(); mascotSync(); squadSyncSoon();
-      };
-      li.appendChild(del);
-      list.appendChild(li);
-    });
-}
-
-function renderAll() {
-  if (!current) return;
-  const filtered = filteredEntries();
-  renderStats(filtered);
-  const hasAny = current.entries.length > 0;
-  document.getElementById("emptyCard").classList.toggle("hidden", hasAny);
-  document.getElementById("content").classList.toggle("hidden", !hasAny);
-  if (!hasAny) return;
-  /* Recap, charts and the weekly summary now live on stats.html. */
-  renderTxns(filtered);
-}
-
-/* ================= edit an existing expense's category ================= */
-let catEditEntry = null;
-function openCatEdit(entry) {
-  catEditEntry = entry;
-  const c = catById(entry.category);
-  document.getElementById("catEditMsg").textContent =
-    (entry.note ? '"' + entry.note + '" · ' : "") + peso(entry.amount) + " · currently " + c.name;
-  const row = document.getElementById("catEditRow");
-  row.innerHTML = "";
-  allCats().forEach(cat => {
-    const b = document.createElement("button");
-    b.className = "chip" + (entry.category === cat.id ? " chip-on" : "");
-    if (entry.category === cat.id) b.style.background = cat.color;
-    b.textContent = cat.emoji + " " + cat.name;
-    b.onclick = async () => {
-      catEditEntry.category = cat.id;
-      await saveCurrent();
-      closeCatEdit();
-      renderAll();
-      if (soundAudible()) sndPop();
-    };
-    row.appendChild(b);
-  });
-  document.getElementById("catEditOverlay").classList.remove("hidden");
-}
-function closeCatEdit() { catEditEntry = null; document.getElementById("catEditOverlay").classList.add("hidden"); }
-document.getElementById("catEditCancel").onclick = closeCatEdit;
-document.getElementById("catEditOverlay").addEventListener("click", e => { if (e.target.id === "catEditOverlay") closeCatEdit(); });
-
-/* ================= form ================= */
-function guessCategory(text) {
-  const low = text.toLowerCase();
-  for (const [catId, words] of Object.entries(KEYWORDS)) {
-    if (words.some(w => low.includes(w))) return catId;
-  }
-  return null;
-}
-
-async function addEntry() {
-  const amtEl = document.getElementById("inAmount");
-  const noteEl = document.getElementById("inNote");
-  const dateEl = document.getElementById("inDate");
-  const amt = parseFloat(amtEl.value);
-  if (!amt || amt <= 0) { amtEl.focus(); return; }
-  const oldStage = stageFor(monthTotal());
-  current.checkins = current.checkins || [];
-  const streakBefore = computeStreak(current.checkins);
-  current.entries.unshift({
-    id: Date.now() + "-" + Math.random().toString(36).slice(2,7),
-    amount: Math.round(amt*100)/100,
-    category: selectedCat,
-    note: noteEl.value.trim(),
-    date: dateEl.value || todayStr(),
-  });
-  /* adding a spend counts as today's check-in too */
-  if (!current.checkins.includes(todayStr())) current.checkins.push(todayStr());
-  await saveCurrent();
-  amtEl.value = ""; noteEl.value = ""; catTouched = false;
-  const btn = document.getElementById("addBtn");
-  btn.classList.add("boop"); btn.textContent = "Added! ✓";
-  setTimeout(() => { btn.classList.remove("boop"); btn.textContent = "Add it"; }, 900);
-  renderAll();
-  mascotOnSpend(Math.round(amt*100)/100, oldStage, stageFor(monthTotal()));
-  renderStreak();
-  if (computeStreak(current.checkins) > streakBefore) celebrateStreak();
-  squadSyncSoon();
-}
-
-/* ================= reset ================= */
-async function resetCurrent() {
-  if (!current) return;
-  if (!await modalConfirm('Reset "'+current.name+'"?', "This erases ALL its spends and custom categories forever. Other trackers are not affected.", { okText: "Reset", danger: true })) return;
-  if (!await modalConfirm("Last chance!", "This cannot be undone. Really reset?", { okText: "Really reset", danger: true })) return;
-  current.entries = [];
-  current.customCats = [];
-  selectedCat = "food"; catTouched = false;
-  await saveCurrent();
-  renderCatChips();
-  renderAll();
-  mascotSync();
-  speak(1);
-  squadSyncSoon();
-}
-
-/* ================= mascot ================= */
-const MASCOT_STAGES = [
-  { min: 0,     img: "mascot-1.png", motion: "m-happy"   },
-  { min: 1000,  img: "mascot-2.png", motion: "m-nervous" },
-  { min: 3000,  img: "mascot-3.png", motion: "m-nervous" },
-  { min: 6000,  img: "mascot-4.png", motion: "m-panic"   },
-  { min: 10000, img: "mascot-5.png", motion: "m-panic"   },
-];
-/* Placeholder lines. Replace these with your own per stage. */
-const MASCOT_LINES = {
-  1: ["Nice, wallet's still breathing.", "Ipon mode: ON. Keep it up!", "Chill month so far. Proud of you.", "Gastos? Barely know her."],
-  2: ["Okay... I see you spending. 👀", "That's ₱1k+ already. Just saying.", "Hmm. I'm watching you.", "Budget's fine. For now."],
-  3: ["₱3k na?? Explain yourself.", "Maybe skip the milk tea today?", "Your wallet filed a complaint.", "This is your warning, bestie."],
-  4: ["₱6K+!! HELLO?? BUDGET??", "PUT. THE. WALLET. DOWN.", "Your allowance is in DANGER!!", "STOP means STOP!!"],
-  5: ["₱10K... it's over. We're broke.", "Goodbye money. I loved you.", "Instant noodles until payday 😭", "PLEASE. STOP. BUYING. MILK TEA."],
-};
-const BIG_SPEND = 500; // one entry above this = "large spend" shock
-
-let mascotStage = 1;
-let typeTimer = null, ambientTimer = null;
-let lastLine = {};
-
-const thisMonthKey = () => todayStr().slice(0, 7);
-function monthTotal() {
-  if (!current) return 0;
-  const m = thisMonthKey();
-  return current.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
-}
-function stageFor(total) {
-  let s = 1;
-  MASCOT_STAGES.forEach((st, i) => { if (total >= st.min) s = i + 1; });
-  return s;
-}
-
-/* ================= settings: sound (volume + mute) & theme ================= */
-/* Stored under a NEW localStorage key; IndexedDB is untouched. */
-const SET_KEY = "pisopal-settings";
-function loadSettings() {
-  let s = {};
-  try { s = JSON.parse(localStorage.getItem(SET_KEY)) || {}; } catch (e) {}
-  /* migrate the old on/off sound flag into the mute state */
-  if (s.muted === undefined && localStorage.getItem("pisopal-sound") !== null)
-    s.muted = localStorage.getItem("pisopal-sound") !== "on";
+function chartColors() {
+  const dark = getTheme() === "dark";
   return {
-    volume: Math.min(100, Math.max(0, Number.isFinite(s.volume) ? s.volume : 70)),
-    muted: s.muted === undefined ? true : !!s.muted,   // default muted (matches old default)
-    theme: s.theme === "dark" ? "dark" : "light",
-    avatar: [1,2,3,4,5].includes(s.avatar) ? s.avatar : 1,   // leaderboard mascot (mascot-N.png)
+    ink: themeVar("--ink", "#2D2A3E"),
+    grid: dark ? "rgba(237,230,214,.12)" : "#E9DFCC",
+    muted: themeVar("--muted", "#8A8398"),
+    surface: themeVar("--surface", "#FFFDF7"),
   };
 }
-const MASCOT_COUNT = 5;
-const avatarSrc = n => "mascot-" + ([1,2,3,4,5].includes(n) ? n : 1) + ".png";
-let settings = loadSettings();
-function saveSettings() { try { localStorage.setItem(SET_KEY, JSON.stringify(settings)); } catch (e) {} }
-const getTheme = () => settings.theme;
-/* mute overrides the slider; audible only when unmuted and volume > 0 */
-function soundAudible() { return !settings.muted && settings.volume > 0; }
 
-/* --- retro sounds (generated in code, no files) --- */
-let audioCtx = null;
-function tone(freq, dur, delay, type, vol) {
-  if (!soundAudible()) return;
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    if (audioCtx.state === "suspended") audioCtx.resume();
-    const t = audioCtx.currentTime + (delay || 0);
-    const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-    o.type = type || "square";
-    o.frequency.setValueAtTime(freq, t);
-    g.gain.setValueAtTime((vol || 0.06) * (settings.volume / 100), t);
-    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(audioCtx.destination);
-    o.start(t); o.stop(t + dur);
-  } catch (e) {}
+/* ================= monthly recap ================= */
+function monthKeyOffset(back) {
+  const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - back);
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0");
 }
-function sndChaChing() { tone(660, .09); tone(990, .14, .08); }
-function sndShock()    { tone(220, .15, 0, "sawtooth"); tone(175, .2, .1, "sawtooth"); }
-function sndDoom()     { [392, 330, 262, 196].forEach((f,i) => tone(f, .22, i*.18, "triangle", .08)); }
-function sndPop()      { tone(520, .07, 0, "triangle"); }
-
-/* --- theme --- */
-function applyTheme(theme, rerenderCharts) {
-  settings.theme = theme === "dark" ? "dark" : "light";
-  document.documentElement.setAttribute("data-theme", settings.theme);
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", settings.theme === "dark" ? "#1C1B19" : "#FBF3E4");
-  if (rerenderCharts && current) renderAll();
-}
-applyTheme(settings.theme, false); // apply saved theme on load
-
-/* --- quick mute button on the mascot card (stays in sync with settings) --- */
-function updateSoundBtn() {
-  const b = document.getElementById("soundBtn");
-  const on = soundAudible();
-  b.textContent = on ? "🔊" : "🔇";
-  b.title = on ? "Sound on (tap to mute)" : "Muted (tap for sound)";
-}
-document.getElementById("soundBtn").onclick = () => {
-  settings.muted = !settings.muted;
-  saveSettings();
-  updateSoundBtn();
-  syncSettingsPanel();
-  if (soundAudible()) sndPop();
-};
-
-/* --- settings panel --- */
-function syncSettingsPanel() {
-  const slider = document.getElementById("volSlider");
-  slider.value = settings.volume;
-  document.getElementById("volVal").textContent = settings.volume + "%";
-  /* muted just dims the row as a cue; the slider stays adjustable so the
-     value is remembered for when sound is turned back on */
-  document.querySelector(".vol-row").style.opacity = settings.muted ? ".5" : "1";
-  const mt = document.getElementById("muteToggle");
-  mt.textContent = settings.muted ? "On" : "Off";
-  mt.classList.toggle("on", settings.muted);
-  mt.setAttribute("aria-pressed", settings.muted ? "true" : "false");
-  document.getElementById("themeLight").classList.toggle("sel", settings.theme !== "dark");
-  document.getElementById("themeDark").classList.toggle("sel", settings.theme === "dark");
-  renderAvatarPicker();
-}
-function renderAvatarPicker() {
-  const row = document.getElementById("avatarRow");
-  row.innerHTML = "";
-  for (let n = 1; n <= MASCOT_COUNT; n++) {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "avatar-opt" + (settings.avatar === n ? " sel" : "");
-    b.title = "Mascot " + n;
-    b.setAttribute("aria-pressed", settings.avatar === n ? "true" : "false");
-    b.innerHTML = '<img src="' + avatarSrc(n) + '" alt="Mascot ' + n + '">';
-    b.onclick = () => pickAvatar(n);
-    row.appendChild(b);
-  }
-}
-function pickAvatar(n) {
-  settings.avatar = [1,2,3,4,5].includes(n) ? n : 1;
-  saveSettings();
-  renderAvatarPicker();
-  squadSyncSoon();   // push new avatar to the squad
-  refreshBoard();    // reflect it on my own row right away
-  if (soundAudible()) sndPop();
-}
-function openSettings() { syncSettingsPanel(); document.getElementById("settingsOverlay").classList.remove("hidden"); }
-function closeSettings() { document.getElementById("settingsOverlay").classList.add("hidden"); }
-document.getElementById("settingsGear").onclick = openSettings;
-document.getElementById("settingsDone").onclick = closeSettings;
-document.getElementById("settingsOverlay").addEventListener("click", e => { if (e.target.id === "settingsOverlay") closeSettings(); });
-document.addEventListener("keydown", e => {
-  if (e.key === "Escape" && !document.getElementById("settingsOverlay").classList.contains("hidden")) closeSettings();
-});
-document.getElementById("volSlider").addEventListener("input", e => {
-  settings.volume = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0));
-  document.getElementById("volVal").textContent = settings.volume + "%";
-  saveSettings();
-  updateSoundBtn();
-});
-document.getElementById("volSlider").addEventListener("change", () => { if (soundAudible()) sndPop(); });
-document.getElementById("muteToggle").onclick = () => {
-  settings.muted = !settings.muted;
-  saveSettings();
-  syncSettingsPanel();
-  updateSoundBtn();
-  if (soundAudible()) sndPop();
-};
-function pickTheme(theme) {
-  if (settings.theme === theme) return;
-  applyTheme(theme, true);
-  saveSettings();
-  syncSettingsPanel();
-  if (soundAudible()) sndPop();
-}
-document.getElementById("themeLight").onclick = () => pickTheme("light");
-document.getElementById("themeDark").onclick = () => pickTheme("dark");
-["themeLight","themeDark"].forEach(id => document.getElementById(id).addEventListener("keydown", e => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pickTheme(id === "themeDark" ? "dark" : "light"); }
-}));
-
-/* --- speech bubble typewriter --- */
-function typeLine(text) {
-  const el = document.getElementById("bubbleText");
-  clearInterval(typeTimer);
-  el.textContent = "";
-  let i = 0;
-  typeTimer = setInterval(() => {
-    el.textContent = text.slice(0, ++i);
-    if (i >= text.length) clearInterval(typeTimer);
-  }, 28);
-}
-function speak(stage) {
-  const pool = MASCOT_LINES[stage] || MASCOT_LINES[1];
-  let line = pool[Math.floor(Math.random() * pool.length)];
-  if (pool.length > 1 && line === lastLine[stage])
-    line = pool[(pool.indexOf(line) + 1) % pool.length];
-  lastLine[stage] = line;
-  typeLine(line);
-}
-
-/* --- effects --- */
-function spawnFx(emoji, cls, xPct, yPct, size) {
-  const layer = document.getElementById("fxLayer");
-  if (!layer) return;
-  const s = document.createElement("span");
-  s.className = "fx " + cls;
-  s.textContent = emoji;
-  s.style.left = xPct + "%";
-  s.style.top = yPct + "%";
-  s.style.fontSize = (size || 18) + "px";
-  layer.appendChild(s);
-  setTimeout(() => s.remove(), 2600);
-}
-function startAmbient() {
-  clearInterval(ambientTimer);
-  ambientTimer = setInterval(() => {
-    if (!current || document.getElementById("appView").classList.contains("hidden")) return;
-    const x = 10 + Math.random() * 75, y = 20 + Math.random() * 45;
-    if (mascotStage === 1)      spawnFx(Math.random() < .5 ? "💖" : "✨", "fx-float", x, y, 15 + Math.random()*7);
-    else if (mascotStage <= 3)  spawnFx("💧", "fx-drip", 55 + Math.random()*30, 12 + Math.random()*18, 14);
-    else                        spawnFx(Math.random() < .65 ? "💸" : "🌩️", "fx-fall", Math.random()*95, -8, 18 + Math.random()*6);
-  }, mascotStage >= 4 ? 900 : 2300);
-}
-function confettiBurst() {
-  const bits = ["🎉","🎊","✨","💛","💚"];
-  for (let i = 0; i < 26; i++)
-    setTimeout(() => spawnFx(bits[i % bits.length], "fx-fall", Math.random()*100, -10, 15 + Math.random()*10), i * 55);
-}
-
-/* --- stage swapping --- */
-function setMascot(stage, animate) {
-  const img = document.getElementById("mascotImg");
-  const br = document.getElementById("mascotBreather");
-  const st = MASCOT_STAGES[stage - 1];
-  const apply = () => {
-    img.src = st.img;
-    img.className = st.motion;
-    mascotStage = stage;
-    startAmbient();
-  };
-  if (animate && stage !== mascotStage) {
-    br.classList.remove("m-in");
-    br.classList.add("m-out");
-    setTimeout(() => {
-      apply();
-      br.classList.remove("m-out");
-      void br.offsetWidth;
-      br.classList.add("m-in");
-      setTimeout(() => br.classList.remove("m-in"), 620);
-    }, 280);
-  } else apply();
-}
-
-/* --- entry points --- */
-function mascotInit() {
+function renderRecap() {
   if (!current) return;
-  const m = thisMonthKey();
-  const stage = stageFor(monthTotal());
-  setMascot(stage, false);
-  const br = document.getElementById("mascotBreather");
-  br.classList.add("m-in");
-  setTimeout(() => br.classList.remove("m-in"), 620);
-  if (current.celebratedMonth && current.celebratedMonth !== m) {
-    confettiBurst(); // new month, back to happy
+  const thisM = monthKeyOffset(0), lastM = monthKeyOffset(1);
+  const inMonth = k => current.entries.filter(e => e.date.slice(0, 7) === k);
+  const sum = arr => arr.reduce((s, e) => s + e.amount, 0);
+  const thisEntries = inMonth(thisM);
+  const total = sum(thisEntries), lastTotal = sum(inMonth(lastM));
+
+  document.getElementById("recapMonth").textContent =
+    parseDate(thisM + "-01").toLocaleString("en", { month: "long", year: "numeric" });
+  document.getElementById("recapTotal").textContent = peso(total);
+
+  const cmp = document.getElementById("recapCompare");
+  if (lastTotal === 0 && total === 0) { cmp.textContent = "No spending yet"; cmp.className = "recap-cmp flat"; }
+  else if (lastTotal === 0) { cmp.textContent = "New vs last month (₱0)"; cmp.className = "recap-cmp up"; }
+  else {
+    const pct = Math.round((total - lastTotal) / lastTotal * 100);
+    if (pct > 0) { cmp.textContent = "▲ " + pct + "% vs last month"; cmp.className = "recap-cmp up"; }
+    else if (pct < 0) { cmp.textContent = "▼ " + Math.abs(pct) + "% vs last month"; cmp.className = "recap-cmp down"; }
+    else { cmp.textContent = "Same as last month"; cmp.className = "recap-cmp flat"; }
   }
-  if (current.celebratedMonth !== m) { current.celebratedMonth = m; saveCurrent(); }
-  speak(stage);
-  updateSoundBtn();
-}
-function mascotOnSpend(amount, oldStage, newStage) {
-  const box = document.getElementById("mascotBox");
-  const enteredDanger = newStage > oldStage && newStage >= 4;
-  if (newStage !== oldStage) setMascot(newStage, true);
-  box.classList.remove("m-jump", "m-shock"); void box.offsetWidth;
-  if (enteredDanger) {
-    document.body.classList.remove("screen-shake"); void document.body.offsetWidth;
-    document.body.classList.add("screen-shake");
-    setTimeout(() => document.body.classList.remove("screen-shake"), 500);
-    const wf = document.getElementById("warnFlash");
-    wf.classList.remove("on"); void wf.offsetWidth; wf.classList.add("on");
-    setTimeout(() => wf.classList.remove("on"), 700);
-    if (newStage === 5) sndDoom(); else sndShock();
-  } else if (amount > BIG_SPEND) {
-    box.classList.add("m-shock");
-    sndShock();
-  } else {
-    box.classList.add("m-jump");
-    for (let i = 0; i < 5; i++)
-      spawnFx("✨", "fx-float", 15 + Math.random()*65, 30 + Math.random()*40, 13 + Math.random()*8);
-    sndChaChing();
-  }
-  speak(newStage);
-}
-function mascotSync() {
-  if (!current) return;
-  const st = stageFor(monthTotal());
-  if (st !== mascotStage) { setMascot(st, true); speak(st); }
-}
-function mascotStop() {
-  clearInterval(ambientTimer);
-  clearInterval(typeTimer);
-}
 
-/* ================= daily check-in streak ================= */
-/* A day counts as checked in if the profile has that date in `checkins`, added
-   either by tapping the check-in button or by adding any spend that day. */
-const dayKey = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-const hasCheckedInToday = () => !!current && (current.checkins || []).includes(todayStr());
+  const byCat = {};
+  thisEntries.forEach(e => { const id = catById(e.category).id; byCat[id] = (byCat[id] || 0) + e.amount; });
+  const rows = Object.entries(byCat).map(([id, v]) => ({ ...catById(id), value: v }))
+    .sort((a, b) => b.value - a.value);
 
-/* Consecutive days ending today. Today's check-in isn't required to keep the run
-   alive during the current day: if today isn't checked in yet but yesterday is,
-   the streak still shows (and tapping today extends it). A fully missed day
-   between then and now drops it to 0. */
-function computeStreak(checkins) {
-  const set = new Set(checkins || []);
-  const cursor = new Date(); cursor.setHours(0,0,0,0);
-  if (!set.has(dayKey(cursor))) {
-    cursor.setDate(cursor.getDate() - 1);
-    if (!set.has(dayKey(cursor))) return 0;
-  }
-  let n = 0;
-  while (set.has(dayKey(cursor))) { n++; cursor.setDate(cursor.getDate() - 1); }
-  return n;
-}
-/* Longest consecutive run ever recorded (DST-safe: compares by calendar day). */
-function bestStreak(checkins) {
-  const days = [...new Set(checkins || [])].sort();
-  let best = 0, run = 0, prevKey = null;
-  for (const s of days) {
-    if (prevKey) {
-      const pd = parseDate(prevKey); pd.setDate(pd.getDate() + 1);
-      run = (dayKey(pd) === s) ? run + 1 : 1;
-    } else run = 1;
-    if (run > best) best = run;
-    prevKey = s;
-  }
-  return best;
-}
+  document.getElementById("recapBiggest").textContent =
+    rows.length ? rows[0].emoji + " " + rows[0].name : "—";
 
-function renderStreak() {
-  if (!current) return;
-  current.checkins = current.checkins || [];
-  const s = computeStreak(current.checkins);
-  const best = Math.max(bestStreak(current.checkins), s);
-  document.getElementById("streakNum").textContent = s === 0 ? "Start your streak!" : s + " day streak!";
-  document.getElementById("streakBest").textContent = "Best: " + best + " day" + (best === 1 ? "" : "s");
-  const done = hasCheckedInToday();
-  document.getElementById("checkinBtn").classList.toggle("hidden", done);
-  document.getElementById("checkinDone").classList.toggle("hidden", !done);
-}
-
-function celebrateStreak() {
-  const f = document.getElementById("streakFlame");
-  f.classList.remove("pop"); void f.offsetWidth; f.classList.add("pop");
-  confettiBurst(); // reuse the existing confetti helper (spawnFx into the mascot fx layer)
-}
-
-/* Record today's check-in (idempotent). Celebrates only when the streak grows,
-   so the first check-in/spend of the day pops but later ones don't. */
-async function checkInToday() {
-  if (!current) return;
-  current.checkins = current.checkins || [];
-  if (current.checkins.includes(todayStr())) { renderStreak(); return; }
-  const before = computeStreak(current.checkins);
-  current.checkins.push(todayStr());
-  await saveCurrent();
-  renderStreak();
-  if (computeStreak(current.checkins) > before) celebrateStreak();
-}
-
-/* ================= squad leaderboard (Firebase) ================= */
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCbP-K2q2vDsFvfnmZTY8Q9xHh-ukNEB5s",
-  authDomain: "money-tracker-3609f.firebaseapp.com",
-  projectId: "money-tracker-3609f",
-  storageBucket: "money-tracker-3609f.firebasestorage.app",
-  messagingSenderId: "153727895500",
-  appId: "1:153727895500:web:efe1f9a186c3f6243ebf69",
-};
-const SQUAD_LS_KEY = "pisopal-squad";
-const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L look-alikes
-
-let fbAuth = null, fbDb = null, squadUser = null, squadAuthPromise = null;
-let squadLocalData = null;   // { code, nickname, trackerId } — kept on-device only
-let squadDocData = null;     // live squads/{code} doc
-let squadUnsubDoc = null, squadUnsubMembers = null;
-let squadSyncTimer = null, squadLastPushed = null;
-
-function loadSquadLocal() {
-  try { squadLocalData = JSON.parse(localStorage.getItem(SQUAD_LS_KEY)); }
-  catch (e) { squadLocalData = null; }
-}
-function saveSquadLocal(d) {
-  squadLocalData = d;
-  try {
-    if (d) localStorage.setItem(SQUAD_LS_KEY, JSON.stringify(d));
-    else localStorage.removeItem(SQUAD_LS_KEY);
-  } catch (e) {}
-}
-
-function ensureFirebase() {
-  if (fbDb) return true;
-  if (typeof firebase === "undefined" || !firebase.initializeApp) return false; // CDN blocked or offline
-  firebase.initializeApp(FIREBASE_CONFIG);
-  fbAuth = firebase.auth();
-  fbDb = firebase.firestore();
-  return true;
-}
-/* anonymous sign-in, invisible to the user */
-function squadAuth() {
-  if (!ensureFirebase()) return Promise.reject(new Error("offline"));
-  if (squadUser) return Promise.resolve(squadUser);
-  if (!squadAuthPromise)
-    squadAuthPromise = fbAuth.signInAnonymously().then(c => (squadUser = c.user));
-  return squadAuthPromise;
-}
-const squadRef = code => fbDb.collection("squads").doc(code);
-
-/* --- screens --- */
-const SQUAD_SCREENS = ["squadLoading","squadOffline","squadSetup","squadCreateForm","squadJoinForm","squadReveal","squadBoard"];
-function squadShow(id) {
-  SQUAD_SCREENS.forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
-}
-function squadErr(id, msg) {
-  const el = document.getElementById(id);
-  el.textContent = msg || "";
-  el.classList.toggle("hidden", !msg);
-}
-
-function showTab(tab) {
-  document.getElementById("tabTrackers").classList.toggle("tab-on", tab === "trackers");
-  document.getElementById("tabSquad").classList.toggle("tab-on", tab === "squad");
-  document.getElementById("trackersPane").classList.toggle("hidden", tab !== "trackers");
-  document.getElementById("squadPane").classList.toggle("hidden", tab !== "squad");
-  if (tab === "squad") squadEnter();
-}
-
-async function squadEnter() {
-  if (!ensureFirebase()) { squadShow("squadOffline"); return; }
-  if (!squadLocalData) { squadShow("squadSetup"); return; }
-  squadShow("squadLoading");
-  try {
-    await squadAuth();
-    startBoard();
-  } catch (e) { squadShow("squadOffline"); }
-}
-
-/* --- live leaderboard --- */
-function stopBoard() {
-  if (squadUnsubDoc) { squadUnsubDoc(); squadUnsubDoc = null; }
-  if (squadUnsubMembers) { squadUnsubMembers(); squadUnsubMembers = null; }
-}
-function startBoard() {
-  stopBoard();
-  const ref = squadRef(squadLocalData.code);
-  squadUnsubDoc = ref.onSnapshot(snap => {
-    if (!snap.exists) {
-      stopBoard(); saveSquadLocal(null); squadDocData = null;
-      squadShow("squadSetup");
-      modalAlert("Squad gone", "That squad no longer exists, so you've been removed from it.");
-      return;
-    }
-    squadDocData = snap.data();
-    document.getElementById("squadNameLabel").textContent = squadDocData.name;
-    document.getElementById("squadCodeSmall").textContent = squadLocalData.code;
-    document.getElementById("squadRenameBtn").classList.toggle("hidden", !squadUser || squadDocData.ownerUID !== squadUser.uid);
-    renderSquadSettings();
-    squadShow("squadBoard");
-  }, () => squadShow("squadOffline"));
-  squadUnsubMembers = ref.collection("members").onSnapshot(snap => {
-    const rows = [];
-    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), spent: Number(d.data().spentThisMonth) || 0, avatar: d.data().avatar }));
-    squadLastRows = rows;
-    renderBoard(rows);
-  }, () => {});
-  squadSyncSoon();
-}
-
-let squadLastRows = [];
-function refreshBoard() { if (squadLastRows.length) renderBoard(squadLastRows); }
-function renderBoard(rows) {
-  rows.sort((a,b) => b.spent - a.spent || a.nickname.localeCompare(b.nickname));
-  const list = document.getElementById("boardList");
+  const list = document.getElementById("recapList");
+  const noneEl = document.getElementById("recapNone");
   list.innerHTML = "";
-  document.getElementById("boardEmpty").classList.toggle("hidden", rows.length > 0);
-  const medals = ["🥇","🥈","🥉"];
-  rows.forEach((r, i) => {
-    const isMe = squadUser && r.uid === squadUser.uid;
-    /* my own row reflects my current pick instantly; others use their synced avatar */
-    const av = isMe ? settings.avatar : r.avatar;
+  noneEl.classList.toggle("hidden", rows.length > 0);
+  const max = rows.length ? rows[0].value : 1;
+  rows.forEach(r => {
+    const pct = total ? Math.round(r.value / total * 100) : 0;
     const li = document.createElement("li");
-    const cls = [];
-    if (i < 3) cls.push("rank-" + (i + 1));
-    if (isMe) cls.push("me");
-    li.className = cls.join(" ");
     li.innerHTML =
-      '<span class="rank-badge">'+(medals[i] || (i+1))+'</span>'+
-      '<img class="board-avatar" src="'+avatarSrc(av)+'" alt="">'+
-      '<span class="board-nick">'+esc(r.nickname)+(isMe ? ' <span class="you-tag">you</span>' : '')+'</span>'+
-      '<b class="board-amt">'+peso(r.spent)+'</b>';
+      '<div class="recap-line"><span class="txn-emoji" style="background:' + r.color + '33;border-color:' + r.color + '">' + r.emoji + '</span>' +
+      esc(r.name) + '<span class="recap-pct">' + pct + '%</span><b>' + peso(r.value) + '</b></div>' +
+      '<div class="recap-bar"><div class="recap-fill" style="width:' + (r.value / max * 100) + '%;background:' + r.color + '"></div></div>';
     list.appendChild(li);
   });
 }
 
-/* --- linked tracker picker --- */
-function renderSquadSettings() {
-  if (!squadLocalData) return;
-  const row = document.getElementById("squadTrackerRow");
-  row.innerHTML = "";
-  if (!profiles.length) {
-    const hint = document.createElement("span");
-    hint.className = "none";
-    hint.textContent = "No trackers yet — make one in My Trackers, then link it here.";
-    row.appendChild(hint);
-    return;
-  }
-  profiles.forEach(p => {
-    const b = document.createElement("button");
-    b.className = "chip chip-sm" + (squadLocalData.trackerId === p.id ? " chip-on chip-ink" : "");
-    b.textContent = p.emoji + " " + p.name;
-    b.onclick = () => { squadLocalData.trackerId = p.id; saveSquadLocal(squadLocalData); renderSquadSettings(); squadSyncSoon(); };
-    row.appendChild(b);
+/* ================= charts ================= */
+function renderBarChart() {
+  const cc = chartColors();
+  const map = {};
+  current.entries.forEach(e => {
+    const key = e.date.slice(0,7);
+    if (!map[key]) map[key] = {};
+    map[key][e.category] = (map[key][e.category]||0) + e.amount;
+  });
+  const months = Object.keys(map).sort().slice(-8);
+  const used = allCats().filter(c => current.entries.some(e => e.category===c.id));
+  const datasets = used.map(c => ({
+    label: c.emoji + " " + c.name,
+    data: months.map(m => map[m][c.id] || 0),
+    backgroundColor: c.color,
+    borderColor: cc.ink,
+    borderWidth: 1.5,
+    borderRadius: 6,
+    maxBarThickness: 44,
+  }));
+  const cfg = {
+    type: "bar",
+    data: { labels: months.map(monthLabel), datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        x: { stacked: true, grid: { display:false }, ticks: { color:cc.ink, font:{family:"Nunito", weight:700} }, border:{ color:cc.ink, width:2 } },
+        y: { stacked: true, grid: { color:cc.grid, borderDash:[4,6] }, ticks: { color:cc.muted, font:{family:"Nunito"}, callback:v=>v>=1000?(v/1000)+"k":v }, border:{ display:false } },
+      },
+      plugins: {
+        legend: { display:false },
+        tooltip: {
+          backgroundColor:cc.surface, titleColor:cc.ink, bodyColor:cc.ink,
+          borderColor:cc.ink, borderWidth:2, cornerRadius:12, padding:12,
+          titleFont:{family:"'Baloo 2'", size:14}, bodyFont:{family:"Nunito", weight:700},
+          callbacks: {
+            label: ctx => " " + ctx.dataset.label + ": " + peso(ctx.parsed.y),
+            footer: items => "Total: " + peso(items.reduce((s,i)=>s+i.parsed.y,0)),
+          },
+          footerColor:cc.ink, footerFont:{family:"Nunito", weight:800},
+        },
+      },
+    },
+  };
+  if (barChart) { barChart.data = cfg.data; barChart.update(); }
+  else barChart = new Chart(document.getElementById("barChart"), cfg);
+}
+
+function renderPie(filtered, rangeTotal) {
+  const cc = chartColors();
+  const map = {};
+  filtered.forEach(e => map[e.category] = (map[e.category]||0) + e.amount);
+  const rows = Object.entries(map)
+    .map(([id,value]) => ({ ...catById(id), value }))
+    .sort((a,b) => b.value - a.value);
+
+  const legend = document.getElementById("pieLegend");
+  const noneEl = document.getElementById("pieNone");
+  const box = document.querySelector(".pie-box");
+  legend.innerHTML = "";
+  const hasData = rows.length > 0;
+  noneEl.classList.toggle("hidden", hasData);
+  box.classList.toggle("hidden", !hasData);
+  legend.classList.toggle("hidden", !hasData);
+  if (!hasData) { if (pieChart) { pieChart.destroy(); pieChart = null; } return; }
+
+  rows.forEach(r => {
+    const li = document.createElement("li");
+    li.innerHTML = '<span class="dot" style="background:'+r.color+'"></span>' + r.emoji + " " + esc(r.name) + "<b>" + peso(r.value) + "</b>";
+    legend.appendChild(li);
+  });
+
+  const cfg = {
+    type: "doughnut",
+    data: {
+      labels: rows.map(r => r.emoji + " " + r.name),
+      datasets: [{
+        data: rows.map(r => r.value),
+        backgroundColor: rows.map(r => r.color),
+        borderColor: cc.ink, borderWidth: 2.5, hoverOffset: 8,
+      }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: "58%",
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor:cc.surface, bodyColor:cc.ink, borderColor:cc.ink,
+          borderWidth:2, cornerRadius:12, padding:12, bodyFont:{family:"Nunito", weight:700},
+          callbacks: {
+            label: ctx => {
+              const pct = rangeTotal ? Math.round(ctx.parsed / rangeTotal * 100) : 0;
+              return " " + ctx.label + ": " + peso(ctx.parsed) + " (" + pct + "%)";
+            },
+          },
+        },
+      },
+    },
+  };
+  if (pieChart) { pieChart.data = cfg.data; pieChart.options = cfg.options; pieChart.update(); }
+  else pieChart = new Chart(document.getElementById("pieChart"), cfg);
+}
+
+function renderWeeks(filtered) {
+  const map = {};
+  filtered.forEach(e => {
+    const ws = weekStart(parseDate(e.date));
+    const k = ws.getTime();
+    if (!map[k]) map[k] = { start: ws, total: 0, count: 0 };
+    map[k].total += e.amount; map[k].count += 1;
+  });
+  const weeks = Object.values(map).sort((a,b)=>b.start-a.start).slice(0,6);
+  const maxW = Math.max(...weeks.map(w=>w.total), 1);
+  const list = document.getElementById("weekList");
+  const noneEl = document.getElementById("weekNone");
+  list.innerHTML = "";
+  noneEl.classList.toggle("hidden", weeks.length > 0);
+  const thisWs = weekStart(new Date()).getTime();
+  weeks.forEach(w => {
+    const end = new Date(w.start); end.setDate(end.getDate()+6);
+    const name = (w.start.getTime()===thisWs) ? "This week" : fmtShort(w.start)+" – "+fmtShort(end);
+    const li = document.createElement("li");
+    li.innerHTML =
+      '<div class="week-head"><span class="week-name">'+name+'</span>'+
+      '<span class="week-meta">'+w.count+' spend'+(w.count!==1?'s':'')+'</span>'+
+      '<b>'+peso(w.total)+'</b></div>'+
+      '<div class="week-bar"><div class="week-fill" style="width:'+(w.total/maxW*100)+'%"></div></div>';
+    list.appendChild(li);
   });
 }
-/* total spent this month by the linked tracker */
-function squadSpentNow() {
-  if (!squadLocalData) return 0;
-  const p = profiles.find(x => x.id === squadLocalData.trackerId);
-  if (!p) return 0;
-  const m = thisMonthKey();
-  const total = p.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
-  return Math.round(total * 100) / 100;
-}
-/* push {nickname, spentThisMonth, avatar} to our member doc, debounced */
-function squadSyncSoon() {
-  if (!squadLocalData) return;
-  clearTimeout(squadSyncTimer);
-  squadSyncTimer = setTimeout(async () => {
-    try {
-      await squadAuth();
-      if (!squadLocalData) return;
-      const v = squadSpentNow();
-      const sig = v + "|" + squadLocalData.nickname + "|" + settings.avatar;
-      if (sig === squadLastPushed) return;
-      await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid)
-        .set({ nickname: squadLocalData.nickname, spentThisMonth: v, avatar: settings.avatar });
-      squadLastPushed = sig;
-    } catch (e) { /* offline — next change retries */ }
-  }, 600);
-}
 
-/* --- create / join --- */
-function genSquadCode() {
-  let c = "";
-  for (let i = 0; i < 6; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
-  return c;
-}
-async function submitCreateSquad(ev) {
-  ev.preventDefault();
-  const name = document.getElementById("sqCreateName").value.trim().slice(0, 24);
-  const nick = document.getElementById("sqCreateNick").value.trim().slice(0, 16);
-  if (!name) { squadErr("sqCreateErr", "Give your squad a name first!"); return; }
-  if (!nick) { squadErr("sqCreateErr", "Pick a nickname so friends know it's you."); return; }
-  squadErr("sqCreateErr", "");
-  squadShow("squadLoading");
-  try {
-    const user = await squadAuth();
-    let code = null;
-    for (let i = 0; i < 6 && !code; i++) {
-      const c = genSquadCode();
-      if (!(await squadRef(c).get()).exists) code = c;
-    }
-    if (!code) throw new Error("no-free-code");
-    await squadRef(code).set({ name, createdAt: Date.now(), ownerUID: user.uid });
-    saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
-    squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow(), avatar: settings.avatar });
-    document.getElementById("codeBig").textContent = code;
-    squadShow("squadReveal");
-  } catch (e) {
-    squadShow("squadCreateForm");
-    squadErr("sqCreateErr", "Couldn't create the squad — check your connection and try again.");
+/* ================= render orchestration ================= */
+function renderAll() {
+  if (!current) return;
+  const filtered = filteredEntries();
+  const rangeTotal = filtered.reduce((s,e)=>s+e.amount,0);
+  const hasAny = current.entries.length > 0;
+  document.getElementById("emptyCard").classList.toggle("hidden", hasAny);
+  document.getElementById("content").classList.toggle("hidden", !hasAny);
+  if (!hasAny) {
+    if (barChart) { barChart.destroy(); barChart = null; }
+    if (pieChart) { pieChart.destroy(); pieChart = null; }
+    return;
   }
+  renderRecap();
+  renderBarChart();
+  renderPie(filtered, rangeTotal);
+  renderWeeks(filtered);
 }
-async function submitJoinSquad(ev) {
-  ev.preventDefault();
-  const code = document.getElementById("sqJoinCode").value.trim().toUpperCase();
-  const nick = document.getElementById("sqJoinNick").value.trim().slice(0, 16);
-  if (code.length !== 6) { squadErr("sqJoinErr", "Codes are 6 characters, like ABC234."); return; }
-  if (!nick) { squadErr("sqJoinErr", "Pick a nickname so friends know it's you."); return; }
-  squadErr("sqJoinErr", "");
-  squadShow("squadLoading");
-  try {
-    const user = await squadAuth();
-    const snap = await squadRef(code).get();
-    if (!snap.exists) {
-      squadShow("squadJoinForm");
-      squadErr("sqJoinErr", "No squad with that code — double-check it with your friend!");
-      return;
-    }
-    saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
-    squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow(), avatar: settings.avatar });
-    startBoard();
-  } catch (e) {
-    squadShow("squadJoinForm");
-    squadErr("sqJoinErr", "Couldn't join — check your connection and try again.");
-  }
-}
-
-/* clipboard with fallback for in-app browsers that lack navigator.clipboard */
-async function copyTextToClipboard(text, btn) {
-  let ok = false;
-  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
-  if (!ok) {
-    const ta = document.createElement("textarea");
-    ta.value = text; ta.setAttribute("readonly", "");
-    ta.style.position = "fixed"; ta.style.opacity = "0";
-    document.body.appendChild(ta); ta.select();
-    try { ok = document.execCommand("copy"); } catch (e) {}
-    ta.remove();
-  }
-  const old = btn.textContent;
-  btn.textContent = ok ? "Copied! ✓" : "Press & hold the code to copy";
-  setTimeout(() => { btn.textContent = old; }, 1400);
-}
-
-/* --- squad wiring --- */
-document.getElementById("tabTrackers").onclick = () => showTab("trackers");
-document.getElementById("tabSquad").onclick = () => showTab("squad");
-document.getElementById("squadShowCreate").onclick = () => { squadErr("sqCreateErr", ""); squadShow("squadCreateForm"); };
-document.getElementById("squadShowJoin").onclick = () => { squadErr("sqJoinErr", ""); squadShow("squadJoinForm"); };
-document.getElementById("sqCreateBack").onclick = () => squadShow("squadSetup");
-document.getElementById("sqJoinBack").onclick = () => squadShow("squadSetup");
-document.getElementById("createSquadForm").addEventListener("submit", submitCreateSquad);
-document.getElementById("joinSquadForm").addEventListener("submit", submitJoinSquad);
-document.getElementById("squadRetryBtn").onclick = () => squadEnter();
-document.getElementById("codeCopyBtn").onclick = e => copyTextToClipboard(document.getElementById("codeBig").textContent, e.target);
-document.getElementById("codeDoneBtn").onclick = () => startBoard();
-document.getElementById("squadCodeCopy").onclick = e => copyTextToClipboard(squadLocalData ? squadLocalData.code : "", e.target);
-document.getElementById("squadRenameBtn").onclick = async () => {
-  if (!squadDocData || !squadLocalData) return;
-  const name = await modalPrompt("Rename squad", { initial: squadDocData.name, placeholder: "Squad name", okText: "Save" });
-  if (!name) return;
-  try { await squadRef(squadLocalData.code).update({ name: name.slice(0, 24) }); }
-  catch (e) { modalAlert("Couldn't rename", "Check your connection and try again."); }
-};
-document.getElementById("squadLeaveBtn").onclick = async () => {
-  if (!squadLocalData) return;
-  if (!await modalConfirm("Leave this squad?", "You'll drop off the leaderboard. You can rejoin any time with the code.", { okText: "Leave", danger: true })) return;
-  try {
-    await squadAuth();
-    await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid).delete();
-  } catch (e) { /* removed locally either way */ }
-  stopBoard(); saveSquadLocal(null); squadDocData = null; squadLastPushed = null;
-  squadShow("squadSetup");
-};
 
 /* ================= init ================= */
-document.getElementById("addBtn").onclick = addEntry;
-document.getElementById("backBtn").onclick = showHome;
-document.getElementById("resetBtn").onclick = resetCurrent;
-document.getElementById("checkinBtn").onclick = checkInToday;
-document.getElementById("viewStatsBtn").onclick = () => {
-  if (current) location.href = "stats.html?id=" + encodeURIComponent(current.id);
-};
-document.getElementById("inNote").addEventListener("input", e => {
-  if (catTouched) return;
-  const g = guessCategory(e.target.value);
-  if (g) { selectedCat = g; renderCatChips(); }
-});
-["inAmount","inNote"].forEach(id =>
-  document.getElementById(id).addEventListener("keydown", e => { if (e.key==="Enter") addEntry(); }));
 ["fromDate","toDate"].forEach(id =>
   document.getElementById(id).addEventListener("change", renderAll));
 
 (async function start() {
-  try {
-    await migrateOldSave();
-    profiles = await dbGetAll();
-  } catch (e) {
-    modalAlert("Storage blocked", "This browser blocked local database storage, so saving won't work. Try normal (non-private) browsing mode.");
-    profiles = [];
+  const id = new URLSearchParams(location.search).get("id");
+  let profiles = [];
+  try { profiles = await dbGetAll(); } catch (e) { profiles = []; }
+  current = (id && profiles.find(p => p.id === id)) || null;
+
+  if (!current) {
+    document.getElementById("notFound").classList.remove("hidden");
+    return;
   }
-  showHome();
-  /* returning from stats.html?id=… reopens the same tracker */
-  const openId = new URLSearchParams(location.search).get("id");
-  if (openId && profiles.some(p => p.id === openId)) openProfile(openId);
-  loadSquadLocal();
-  /* keep our leaderboard number fresh for squadmates even if the tab isn't opened */
-  if (squadLocalData) squadAuth().then(() => squadSyncSoon()).catch(() => {});
+  document.getElementById("backBtn").href = "index.html?id=" + encodeURIComponent(current.id);
+  document.getElementById("profileBadge").textContent = current.emoji + " " + current.name;
+  document.getElementById("statsWrap").classList.remove("hidden");
+  renderFilterChips();
+  renderAll();
 })();
+
 </script>
 </body>
 </html>
