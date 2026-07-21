@@ -282,6 +282,74 @@ body.screen-shake { animation: scr-shake .45s linear; }
 .checkin-done { margin: 0; font-family: 'Baloo 2'; font-weight: 800; font-size: 17px; color: #3ECF8E; }
 @media (prefers-reduced-motion: reduce) { .streak-flame.pop { animation: none; } }
 
+/* ---------- home tabs ---------- */
+.tab-row { display: flex; justify-content: center; gap: 12px; margin: 0 0 24px; }
+.tab-btn {
+  border: 3px solid #2D2A3E; background: #FFFDF7; border-radius: 999px;
+  padding: 9px 22px; font-family: 'Baloo 2'; font-weight: 800; font-size: 16px;
+  cursor: pointer; color: #2D2A3E; box-shadow: 3px 3px 0 #2D2A3E;
+  transition: transform .1s ease;
+}
+.tab-btn:hover { transform: translate(-1px,-1px); }
+.tab-btn.tab-on { background: #2D2A3E; color: #FFFDF7; }
+
+/* ---------- squad ---------- */
+.squad-choice { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 22px; }
+.squad-choice-card { text-align: center; padding: 26px 18px; }
+.squad-emoji { font-size: 34px; }
+.squad-form .field { margin-bottom: 12px; }
+.squad-err { color: #C24545; font-weight: 800; margin: 8px 0 0; }
+.code-input { text-transform: uppercase; letter-spacing: 4px; font-family: 'Baloo 2'; font-weight: 800; }
+.code-big {
+  font-family: 'Baloo 2'; font-size: 42px; font-weight: 800; letter-spacing: 10px;
+  text-align: center; text-indent: 10px; background: #fff; border: 3px dashed #2D2A3E;
+  border-radius: 16px; padding: 16px 8px; margin: 4px 0 16px; user-select: all;
+}
+.board-list { list-style: none; margin: 12px 0 0; padding: 0; }
+.board-list li {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  border: 2.5px solid #2D2A3E; border-radius: 14px; margin-bottom: 10px;
+  background: #fff; font-weight: 800;
+}
+.board-list li.rank-1 { background: #FFE9A8; border-width: 3.5px; }
+.board-list li.rank-2 { background: #E4E4EC; }
+.board-list li.rank-3 { background: #F0D3B8; }
+.board-list li.me { box-shadow: 3px 3px 0 #2D2A3E; }
+.rank-badge { font-family: 'Baloo 2'; font-size: 19px; width: 34px; text-align: center; flex-shrink: 0; }
+.board-nick { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.you-tag { font-size: 11px; background: #2D2A3E; color: #FFFDF7; border-radius: 999px; padding: 2px 8px; vertical-align: middle; }
+.board-amt { margin-left: auto; flex-shrink: 0; }
+@media (max-width: 700px) { .squad-choice { grid-template-columns: 1fr; } }
+
+/* ---------- modal (on-page replacement for prompt/confirm/alert, which in-app browsers block) ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(45,42,62,.5);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal {
+  background: #FBF3E4; border: 3px solid #2D2A3E; border-radius: 22px;
+  box-shadow: 6px 6px 0 #2D2A3E; padding: 22px 22px 20px;
+  width: 100%; max-width: 400px;
+  animation: modal-pop .22s cubic-bezier(.3,1.4,.5,1);
+}
+.modal h2 { font-size: 23px; margin: 0 0 4px; }
+.modal-msg { margin: 0 0 14px; font-weight: 700; color: #6C6680; font-size: 14.5px; white-space: pre-line; }
+.modal-actions { display: flex; gap: 10px; margin-top: 16px; }
+.modal-actions button {
+  flex: 1; border: 3px solid #2D2A3E; border-radius: 14px; padding: 10px 12px;
+  font-family: 'Baloo 2'; font-size: 17px; font-weight: 800; cursor: pointer;
+  box-shadow: 3px 3px 0 #2D2A3E; transition: transform .1s ease, box-shadow .1s ease;
+}
+.modal-actions button:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 #2D2A3E; }
+.modal-actions button:active { transform: translate(2px,2px); box-shadow: 1px 1px 0 #2D2A3E; }
+.modal-cancel { background: #FFFDF7; color: #2D2A3E; }
+.modal-ok { background: #3ECF8E; color: #fff; }
+.modal-ok.danger { background: #FF6B6B; }
+@keyframes modal-pop { 0% { transform: scale(.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .modal { animation: none; } }
+
 .empty { text-align: center; padding: 40px 20px; font-weight: 700; color: #6C6680; }
 .empty-emoji { font-size: 40px; margin-bottom: 8px; }
 .foot { text-align: center; color: #B5AC9A; font-weight: 700; font-size: 13px; margin-top: 8px; }
@@ -312,9 +380,120 @@ body.screen-shake { animation: scr-shake .45s linear; }
       </h1>
       <p class="tagline">your spending, but make it cute</p>
     </header>
-    <p class="home-empty" id="homeEmpty">No trackers yet. Make your first one below!</p>
-    <div class="home-grid" id="homeGrid"></div>
-    <footer class="foot">Saved on this device automatically ♥</footer>
+
+    <div class="tab-row">
+      <button class="tab-btn tab-on" id="tabTrackers">🏠 My Trackers</button>
+      <button class="tab-btn" id="tabSquad">🏆 Squad</button>
+    </div>
+
+    <div id="trackersPane">
+      <p class="home-empty" id="homeEmpty">No trackers yet. Make your first one below!</p>
+      <div class="home-grid" id="homeGrid"></div>
+      <footer class="foot">Saved on this device automatically ♥</footer>
+    </div>
+
+    <!-- ================= SQUAD TAB ================= -->
+    <div id="squadPane" class="hidden">
+
+      <div class="card hidden" id="squadLoading">
+        <p class="none">Connecting to your squad…</p>
+      </div>
+
+      <div class="card hidden" id="squadOffline">
+        <h2>Can't reach the squad server 🛰️</h2>
+        <p class="sub">Squads need an internet connection. Your personal trackers still work offline — try again once you're back online.</p>
+        <button class="back-btn" id="squadRetryBtn">↻ Try again</button>
+      </div>
+
+      <div id="squadSetup" class="hidden">
+        <p class="home-empty">Team up with friends and see who saves the most each month!</p>
+        <div class="squad-choice">
+          <div class="profile-card squad-choice-card" id="squadShowCreate">
+            <div class="squad-emoji">🎉</div>
+            <div class="p-name">Create a Squad</div>
+            <div class="p-meta">Start fresh and invite your friends</div>
+          </div>
+          <div class="profile-card squad-choice-card" id="squadShowJoin">
+            <div class="squad-emoji">🔑</div>
+            <div class="p-name">Join a Squad</div>
+            <div class="p-meta">Got a 6-character code? Hop in!</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card form-card squad-form hidden" id="squadCreateForm">
+        <h2>Create a Squad</h2>
+        <p class="sub">Pick a squad name and what your friends will call you.</p>
+        <form id="createSquadForm">
+          <div class="field">
+            <label for="sqCreateName">Squad name</label>
+            <input id="sqCreateName" type="text" maxlength="24" placeholder="e.g. Ipon Warriors" autocomplete="off">
+          </div>
+          <div class="field">
+            <label for="sqCreateNick">Your nickname</label>
+            <input id="sqCreateNick" type="text" maxlength="16" placeholder="e.g. Rey" autocomplete="off">
+          </div>
+          <p class="squad-err hidden" id="sqCreateErr"></p>
+          <div class="modal-actions">
+            <button type="button" class="modal-cancel" id="sqCreateBack">← Back</button>
+            <button type="submit" class="modal-ok">Create ✨</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card form-card squad-form hidden" id="squadJoinForm">
+        <h2>Join a Squad</h2>
+        <p class="sub">Type the code your friend shared with you.</p>
+        <form id="joinSquadForm">
+          <div class="field">
+            <label for="sqJoinCode">Squad code</label>
+            <input id="sqJoinCode" class="code-input" type="text" maxlength="6" placeholder="ABC123" autocomplete="off" autocapitalize="characters" spellcheck="false">
+          </div>
+          <div class="field">
+            <label for="sqJoinNick">Your nickname</label>
+            <input id="sqJoinNick" type="text" maxlength="16" placeholder="e.g. Rey" autocomplete="off">
+          </div>
+          <p class="squad-err hidden" id="sqJoinErr"></p>
+          <div class="modal-actions">
+            <button type="button" class="modal-cancel" id="sqJoinBack">← Back</button>
+            <button type="submit" class="modal-ok">Join 🎉</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="card hidden" id="squadReveal">
+        <h2>Squad created! 🎊</h2>
+        <p class="sub">Share this code with your friends — they tap "Join a Squad" and type it in.</p>
+        <div class="code-big" id="codeBig"></div>
+        <div class="modal-actions">
+          <button type="button" class="modal-cancel" id="codeCopyBtn">📋 Copy code</button>
+          <button type="button" class="modal-ok" id="codeDoneBtn">To the leaderboard →</button>
+        </div>
+      </div>
+
+      <div id="squadBoard" class="hidden">
+        <div class="card">
+          <h2><span id="squadNameLabel"></span>
+            <button class="icon-btn hidden" id="squadRenameBtn" title="Rename squad">✎</button></h2>
+          <p class="sub">Code: <b id="squadCodeSmall"></b>
+            <button class="icon-btn" id="squadCodeCopy" title="Copy code">📋</button>
+            · ranked by spending this month</p>
+          <ul class="board-list" id="boardList"></ul>
+          <p class="none hidden" id="boardEmpty">Nobody on the board yet — share the code!</p>
+        </div>
+        <div class="card form-card">
+          <h2>Your spending setup</h2>
+          <p class="sub">Pick which tracker to count. Only your nickname and how much it spent this month are shared with the squad.</p>
+          <div class="field">
+            <label>Linked tracker</label>
+            <div class="cat-row" id="squadTrackerRow" style="margin:8px 0 0"></div>
+          </div>
+        </div>
+        <div class="danger-row"><button class="danger-btn" id="squadLeaveBtn">👋 Leave this squad</button></div>
+      </div>
+
+      <footer class="foot">Squads sync online · your spends stay on this device ♥</footer>
+    </div>
   </div>
 
   <!-- ================= TRACKER VIEW ================= -->
@@ -430,6 +609,24 @@ body.screen-shake { animation: scr-shake .45s linear; }
 </div>
 <div id="warnFlash"></div>
 
+<!-- ================= MODAL (replaces prompt/confirm/alert for in-app browsers) ================= -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <form class="modal" id="modalForm">
+    <h2 id="modalTitle"></h2>
+    <p class="modal-msg" id="modalMsg"></p>
+    <input type="text" id="modalInput" autocomplete="off">
+    <div class="modal-actions">
+      <button type="button" class="modal-cancel" id="modalCancel">Cancel</button>
+      <button type="submit" class="modal-ok" id="modalOk">OK</button>
+    </div>
+  </form>
+</div>
+
+<!-- Firebase (compat builds so everything stays in this one file; if these fail to
+     load — offline, blocked CDN — the Squad tab shows a friendly offline screen) -->
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
 <script>
 /* ================= constants ================= */
 const BASE_CATEGORIES = [
@@ -491,6 +688,68 @@ async function dbDelete(id) {
   });
 }
 
+/* ================= modal (replaces prompt/confirm/alert, which in-app browsers block) ================= */
+const modalEls = {
+  overlay: document.getElementById("modalOverlay"),
+  form: document.getElementById("modalForm"),
+  title: document.getElementById("modalTitle"),
+  msg: document.getElementById("modalMsg"),
+  input: document.getElementById("modalInput"),
+  ok: document.getElementById("modalOk"),
+  cancel: document.getElementById("modalCancel"),
+};
+let modalResolve = null;
+let modalHasInput = false;
+
+function openModal(opts) {
+  if (modalResolve) closeModal(modalHasInput ? null : false);
+  return new Promise(resolve => {
+    modalResolve = resolve;
+    modalHasInput = !!opts.input;
+    modalEls.title.textContent = opts.title || "";
+    modalEls.msg.textContent = opts.message || "";
+    modalEls.msg.classList.toggle("hidden", !opts.message);
+    modalEls.input.classList.toggle("hidden", !opts.input);
+    modalEls.input.value = opts.initial || "";
+    modalEls.input.placeholder = opts.placeholder || "";
+    modalEls.input.maxLength = opts.maxLength || 24;
+    modalEls.ok.textContent = opts.okText || "OK";
+    modalEls.ok.classList.toggle("danger", !!opts.danger);
+    modalEls.cancel.classList.toggle("hidden", !!opts.alertOnly);
+    modalEls.overlay.classList.remove("hidden");
+    if (opts.input) setTimeout(() => { modalEls.input.focus(); modalEls.input.select(); }, 60);
+    else modalEls.ok.focus();
+  });
+}
+function closeModal(result) {
+  modalEls.overlay.classList.add("hidden");
+  const r = modalResolve; modalResolve = null;
+  if (r) r(result);
+}
+modalEls.form.addEventListener("submit", e => {
+  e.preventDefault();
+  if (!modalResolve) return;
+  if (modalHasInput) {
+    const v = modalEls.input.value.trim();
+    if (!v) { modalEls.input.focus(); return; }
+    closeModal(v);
+  } else closeModal(true);
+});
+modalEls.cancel.addEventListener("click", () => closeModal(modalHasInput ? null : false));
+modalEls.overlay.addEventListener("click", e => {
+  if (e.target === modalEls.overlay) closeModal(modalHasInput ? null : false);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && modalResolve) closeModal(modalHasInput ? null : false);
+});
+
+/* prompt() replacement: resolves to trimmed text, or null if cancelled */
+const modalPrompt = (title, opts = {}) => openModal({ input: true, ...opts, title });
+/* confirm() replacement: resolves to true/false */
+const modalConfirm = (title, message, opts = {}) => openModal({ ...opts, title, message });
+/* alert() replacement: resolves when dismissed */
+const modalAlert = (title, message) => openModal({ title, message, alertOnly: true, okText: "OK" });
+
 /* ================= state ================= */
 let profiles = [];        // all profiles (metadata + data)
 let current = null;       // the open profile object
@@ -515,7 +774,7 @@ function newProfileObj(name) {
 async function saveCurrent() {
   if (!current) return;
   try { await dbPut(current); }
-  catch (e) { alert("Couldn't save. Your browser storage might be blocked."); }
+  catch (e) { modalAlert("Couldn't save", "Your browser storage might be blocked."); }
 }
 
 /* one-time import of the old localStorage save, so nothing is lost */
@@ -606,9 +865,9 @@ function renderHome() {
     ren.className = "icon-btn"; ren.title = "Rename"; ren.textContent = "✎";
     ren.onclick = async (ev) => {
       ev.stopPropagation();
-      const name = prompt("New name for this tracker:", p.name);
-      if (!name || !name.trim()) return;
-      p.name = name.trim().slice(0, 24);
+      const name = await modalPrompt("Rename tracker", { initial: p.name, placeholder: "Tracker name", okText: "Save" });
+      if (!name) return;
+      p.name = name.slice(0, 24);
       await dbPut(p);
       renderHome();
     };
@@ -617,10 +876,11 @@ function renderHome() {
     del.className = "icon-btn"; del.title = "Delete"; del.textContent = "🗑";
     del.onclick = async (ev) => {
       ev.stopPropagation();
-      if (!confirm('Delete "'+p.name+'" and ALL its data forever? This cannot be undone.')) return;
+      if (!await modalConfirm('Delete "'+p.name+'"?', "This erases the tracker and ALL its data forever. This cannot be undone.", { okText: "Delete", danger: true })) return;
       await dbDelete(p.id);
       profiles = profiles.filter(x => x.id !== p.id);
       renderHome();
+      squadSyncSoon();
     };
 
     actions.appendChild(ren);
@@ -633,9 +893,9 @@ function renderHome() {
   add.className = "profile-card new-card";
   add.innerHTML = '<div class="new-plus">+</div><div class="new-label">New Profile</div>';
   add.onclick = async () => {
-    const name = prompt("Name your new tracker (e.g. Me, Mom, Trip Fund):");
-    if (!name || !name.trim()) return;
-    const p = newProfileObj(name.trim().slice(0, 24));
+    const name = await modalPrompt("New tracker", { placeholder: "e.g. Me, Mom, Trip Fund", okText: "Create" });
+    if (!name) return;
+    const p = newProfileObj(name.slice(0, 24));
     profiles.push(p);
     await dbPut(p);
     openProfile(p.id);
@@ -684,9 +944,9 @@ function renderCatChips() {
   add.className = "chip chip-new";
   add.textContent = "+ New";
   add.onclick = async () => {
-    const name = prompt("Name your new category:");
-    if (!name || !name.trim()) return;
-    const clean = name.trim().slice(0,14);
+    const name = await modalPrompt("New category", { placeholder: "e.g. Pets, Gifts", okText: "Add", maxLength: 14 });
+    if (!name) return;
+    const clean = name.slice(0,14);
     const id = "c_" + clean.toLowerCase().replace(/[^a-z0-9]/g,"") + "_" + Date.now().toString(36);
     current.customCats.push({ id, name: clean, emoji:"🏷️", color: EXTRA_COLORS[current.customCats.length % EXTRA_COLORS.length] });
     selectedCat = id; catTouched = true;
@@ -869,9 +1129,9 @@ function renderTxns(filtered) {
       const del = document.createElement("button");
       del.className = "del"; del.title = "Delete"; del.textContent = "✕";
       del.onclick = async () => {
-        if (!confirm("Delete this spend?")) return;
+        if (!await modalConfirm("Delete this spend?", peso(e.amount) + " · " + (e.note || catById(e.category).name), { okText: "Delete", danger: true })) return;
         current.entries = current.entries.filter(x => x.id !== e.id);
-        await saveCurrent(); renderAll(); mascotSync();
+        await saveCurrent(); renderAll(); mascotSync(); squadSyncSoon();
       };
       li.appendChild(del);
       list.appendChild(li);
@@ -932,13 +1192,14 @@ async function addEntry() {
   mascotOnSpend(Math.round(amt*100)/100, oldStage, stageFor(monthTotal()));
   renderStreak();
   if (computeStreak(current.checkins) > streakBefore) celebrateStreak();
+  squadSyncSoon();
 }
 
 /* ================= reset ================= */
 async function resetCurrent() {
   if (!current) return;
-  if (!confirm('Reset "'+current.name+'"?\n\nThis erases ALL its spends and custom categories forever. Other trackers are not affected.')) return;
-  if (!confirm("Last chance! This cannot be undone. Really reset?")) return;
+  if (!await modalConfirm('Reset "'+current.name+'"?', "This erases ALL its spends and custom categories forever. Other trackers are not affected.", { okText: "Reset", danger: true })) return;
+  if (!await modalConfirm("Last chance!", "This cannot be undone. Really reset?", { okText: "Really reset", danger: true })) return;
   current.entries = [];
   current.customCats = [];
   selectedCat = "food"; catTouched = false;
@@ -947,6 +1208,7 @@ async function resetCurrent() {
   renderAll();
   mascotSync();
   speak(1);
+  squadSyncSoon();
 }
 
 /* ================= mascot ================= */
@@ -1208,6 +1470,287 @@ async function checkInToday() {
   if (computeStreak(current.checkins) > before) celebrateStreak();
 }
 
+/* ================= squad leaderboard (Firebase) ================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCbP-K2q2vDsFvfnmZTY8Q9xHh-ukNEB5s",
+  authDomain: "money-tracker-3609f.firebaseapp.com",
+  projectId: "money-tracker-3609f",
+  storageBucket: "money-tracker-3609f.firebasestorage.app",
+  messagingSenderId: "153727895500",
+  appId: "1:153727895500:web:efe1f9a186c3f6243ebf69",
+};
+const SQUAD_LS_KEY = "pisopal-squad";
+const CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // no 0/O/1/I/L look-alikes
+
+let fbAuth = null, fbDb = null, squadUser = null, squadAuthPromise = null;
+let squadLocalData = null;   // { code, nickname, trackerId } — kept on-device only
+let squadDocData = null;     // live squads/{code} doc
+let squadUnsubDoc = null, squadUnsubMembers = null;
+let squadSyncTimer = null, squadLastPushed = null;
+
+function loadSquadLocal() {
+  try { squadLocalData = JSON.parse(localStorage.getItem(SQUAD_LS_KEY)); }
+  catch (e) { squadLocalData = null; }
+}
+function saveSquadLocal(d) {
+  squadLocalData = d;
+  try {
+    if (d) localStorage.setItem(SQUAD_LS_KEY, JSON.stringify(d));
+    else localStorage.removeItem(SQUAD_LS_KEY);
+  } catch (e) {}
+}
+
+function ensureFirebase() {
+  if (fbDb) return true;
+  if (typeof firebase === "undefined" || !firebase.initializeApp) return false; // CDN blocked or offline
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  fbDb = firebase.firestore();
+  return true;
+}
+/* anonymous sign-in, invisible to the user */
+function squadAuth() {
+  if (!ensureFirebase()) return Promise.reject(new Error("offline"));
+  if (squadUser) return Promise.resolve(squadUser);
+  if (!squadAuthPromise)
+    squadAuthPromise = fbAuth.signInAnonymously().then(c => (squadUser = c.user));
+  return squadAuthPromise;
+}
+const squadRef = code => fbDb.collection("squads").doc(code);
+
+/* --- screens --- */
+const SQUAD_SCREENS = ["squadLoading","squadOffline","squadSetup","squadCreateForm","squadJoinForm","squadReveal","squadBoard"];
+function squadShow(id) {
+  SQUAD_SCREENS.forEach(s => document.getElementById(s).classList.toggle("hidden", s !== id));
+}
+function squadErr(id, msg) {
+  const el = document.getElementById(id);
+  el.textContent = msg || "";
+  el.classList.toggle("hidden", !msg);
+}
+
+function showTab(tab) {
+  document.getElementById("tabTrackers").classList.toggle("tab-on", tab === "trackers");
+  document.getElementById("tabSquad").classList.toggle("tab-on", tab === "squad");
+  document.getElementById("trackersPane").classList.toggle("hidden", tab !== "trackers");
+  document.getElementById("squadPane").classList.toggle("hidden", tab !== "squad");
+  if (tab === "squad") squadEnter();
+}
+
+async function squadEnter() {
+  if (!ensureFirebase()) { squadShow("squadOffline"); return; }
+  if (!squadLocalData) { squadShow("squadSetup"); return; }
+  squadShow("squadLoading");
+  try {
+    await squadAuth();
+    startBoard();
+  } catch (e) { squadShow("squadOffline"); }
+}
+
+/* --- live leaderboard --- */
+function stopBoard() {
+  if (squadUnsubDoc) { squadUnsubDoc(); squadUnsubDoc = null; }
+  if (squadUnsubMembers) { squadUnsubMembers(); squadUnsubMembers = null; }
+}
+function startBoard() {
+  stopBoard();
+  const ref = squadRef(squadLocalData.code);
+  squadUnsubDoc = ref.onSnapshot(snap => {
+    if (!snap.exists) {
+      stopBoard(); saveSquadLocal(null); squadDocData = null;
+      squadShow("squadSetup");
+      modalAlert("Squad gone", "That squad no longer exists, so you've been removed from it.");
+      return;
+    }
+    squadDocData = snap.data();
+    document.getElementById("squadNameLabel").textContent = squadDocData.name;
+    document.getElementById("squadCodeSmall").textContent = squadLocalData.code;
+    document.getElementById("squadRenameBtn").classList.toggle("hidden", !squadUser || squadDocData.ownerUID !== squadUser.uid);
+    renderSquadSettings();
+    squadShow("squadBoard");
+  }, () => squadShow("squadOffline"));
+  squadUnsubMembers = ref.collection("members").onSnapshot(snap => {
+    const rows = [];
+    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), spent: Number(d.data().spentThisMonth) || 0 }));
+    renderBoard(rows);
+  }, () => {});
+  squadSyncSoon();
+}
+
+function renderBoard(rows) {
+  rows.sort((a,b) => b.spent - a.spent || a.nickname.localeCompare(b.nickname));
+  const list = document.getElementById("boardList");
+  list.innerHTML = "";
+  document.getElementById("boardEmpty").classList.toggle("hidden", rows.length > 0);
+  const medals = ["🥇","🥈","🥉"];
+  rows.forEach((r, i) => {
+    const isMe = squadUser && r.uid === squadUser.uid;
+    const li = document.createElement("li");
+    const cls = [];
+    if (i < 3) cls.push("rank-" + (i + 1));
+    if (isMe) cls.push("me");
+    li.className = cls.join(" ");
+    li.innerHTML =
+      '<span class="rank-badge">'+(medals[i] || (i+1))+'</span>'+
+      '<span class="board-nick">'+esc(r.nickname)+(isMe ? ' <span class="you-tag">you</span>' : '')+'</span>'+
+      '<b class="board-amt">'+peso(r.spent)+'</b>';
+    list.appendChild(li);
+  });
+}
+
+/* --- linked tracker picker --- */
+function renderSquadSettings() {
+  if (!squadLocalData) return;
+  const row = document.getElementById("squadTrackerRow");
+  row.innerHTML = "";
+  if (!profiles.length) {
+    const hint = document.createElement("span");
+    hint.className = "none";
+    hint.textContent = "No trackers yet — make one in My Trackers, then link it here.";
+    row.appendChild(hint);
+    return;
+  }
+  profiles.forEach(p => {
+    const b = document.createElement("button");
+    b.className = "chip chip-sm" + (squadLocalData.trackerId === p.id ? " chip-on chip-ink" : "");
+    b.textContent = p.emoji + " " + p.name;
+    b.onclick = () => { squadLocalData.trackerId = p.id; saveSquadLocal(squadLocalData); renderSquadSettings(); squadSyncSoon(); };
+    row.appendChild(b);
+  });
+}
+/* total spent this month by the linked tracker */
+function squadSpentNow() {
+  if (!squadLocalData) return 0;
+  const p = profiles.find(x => x.id === squadLocalData.trackerId);
+  if (!p) return 0;
+  const m = thisMonthKey();
+  const total = p.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
+  return Math.round(total * 100) / 100;
+}
+/* push {nickname, spentThisMonth} to our member doc, debounced */
+function squadSyncSoon() {
+  if (!squadLocalData) return;
+  clearTimeout(squadSyncTimer);
+  squadSyncTimer = setTimeout(async () => {
+    try {
+      await squadAuth();
+      if (!squadLocalData) return;
+      const v = squadSpentNow();
+      if (v === squadLastPushed) return;
+      await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid)
+        .set({ nickname: squadLocalData.nickname, spentThisMonth: v });
+      squadLastPushed = v;
+    } catch (e) { /* offline — next change retries */ }
+  }, 600);
+}
+
+/* --- create / join --- */
+function genSquadCode() {
+  let c = "";
+  for (let i = 0; i < 6; i++) c += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+  return c;
+}
+async function submitCreateSquad(ev) {
+  ev.preventDefault();
+  const name = document.getElementById("sqCreateName").value.trim().slice(0, 24);
+  const nick = document.getElementById("sqCreateNick").value.trim().slice(0, 16);
+  if (!name) { squadErr("sqCreateErr", "Give your squad a name first!"); return; }
+  if (!nick) { squadErr("sqCreateErr", "Pick a nickname so friends know it's you."); return; }
+  squadErr("sqCreateErr", "");
+  squadShow("squadLoading");
+  try {
+    const user = await squadAuth();
+    let code = null;
+    for (let i = 0; i < 6 && !code; i++) {
+      const c = genSquadCode();
+      if (!(await squadRef(c).get()).exists) code = c;
+    }
+    if (!code) throw new Error("no-free-code");
+    await squadRef(code).set({ name, createdAt: Date.now(), ownerUID: user.uid });
+    saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
+    squadLastPushed = null;
+    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow() });
+    document.getElementById("codeBig").textContent = code;
+    squadShow("squadReveal");
+  } catch (e) {
+    squadShow("squadCreateForm");
+    squadErr("sqCreateErr", "Couldn't create the squad — check your connection and try again.");
+  }
+}
+async function submitJoinSquad(ev) {
+  ev.preventDefault();
+  const code = document.getElementById("sqJoinCode").value.trim().toUpperCase();
+  const nick = document.getElementById("sqJoinNick").value.trim().slice(0, 16);
+  if (code.length !== 6) { squadErr("sqJoinErr", "Codes are 6 characters, like ABC234."); return; }
+  if (!nick) { squadErr("sqJoinErr", "Pick a nickname so friends know it's you."); return; }
+  squadErr("sqJoinErr", "");
+  squadShow("squadLoading");
+  try {
+    const user = await squadAuth();
+    const snap = await squadRef(code).get();
+    if (!snap.exists) {
+      squadShow("squadJoinForm");
+      squadErr("sqJoinErr", "No squad with that code — double-check it with your friend!");
+      return;
+    }
+    saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
+    squadLastPushed = null;
+    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow() });
+    startBoard();
+  } catch (e) {
+    squadShow("squadJoinForm");
+    squadErr("sqJoinErr", "Couldn't join — check your connection and try again.");
+  }
+}
+
+/* clipboard with fallback for in-app browsers that lack navigator.clipboard */
+async function copyTextToClipboard(text, btn) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+  if (!ok) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    ta.remove();
+  }
+  const old = btn.textContent;
+  btn.textContent = ok ? "Copied! ✓" : "Press & hold the code to copy";
+  setTimeout(() => { btn.textContent = old; }, 1400);
+}
+
+/* --- squad wiring --- */
+document.getElementById("tabTrackers").onclick = () => showTab("trackers");
+document.getElementById("tabSquad").onclick = () => showTab("squad");
+document.getElementById("squadShowCreate").onclick = () => { squadErr("sqCreateErr", ""); squadShow("squadCreateForm"); };
+document.getElementById("squadShowJoin").onclick = () => { squadErr("sqJoinErr", ""); squadShow("squadJoinForm"); };
+document.getElementById("sqCreateBack").onclick = () => squadShow("squadSetup");
+document.getElementById("sqJoinBack").onclick = () => squadShow("squadSetup");
+document.getElementById("createSquadForm").addEventListener("submit", submitCreateSquad);
+document.getElementById("joinSquadForm").addEventListener("submit", submitJoinSquad);
+document.getElementById("squadRetryBtn").onclick = () => squadEnter();
+document.getElementById("codeCopyBtn").onclick = e => copyTextToClipboard(document.getElementById("codeBig").textContent, e.target);
+document.getElementById("codeDoneBtn").onclick = () => startBoard();
+document.getElementById("squadCodeCopy").onclick = e => copyTextToClipboard(squadLocalData ? squadLocalData.code : "", e.target);
+document.getElementById("squadRenameBtn").onclick = async () => {
+  if (!squadDocData || !squadLocalData) return;
+  const name = await modalPrompt("Rename squad", { initial: squadDocData.name, placeholder: "Squad name", okText: "Save" });
+  if (!name) return;
+  try { await squadRef(squadLocalData.code).update({ name: name.slice(0, 24) }); }
+  catch (e) { modalAlert("Couldn't rename", "Check your connection and try again."); }
+};
+document.getElementById("squadLeaveBtn").onclick = async () => {
+  if (!squadLocalData) return;
+  if (!await modalConfirm("Leave this squad?", "You'll drop off the leaderboard. You can rejoin any time with the code.", { okText: "Leave", danger: true })) return;
+  try {
+    await squadAuth();
+    await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid).delete();
+  } catch (e) { /* removed locally either way */ }
+  stopBoard(); saveSquadLocal(null); squadDocData = null; squadLastPushed = null;
+  squadShow("squadSetup");
+};
+
 /* ================= init ================= */
 document.getElementById("addBtn").onclick = addEntry;
 document.getElementById("backBtn").onclick = showHome;
@@ -1228,10 +1771,13 @@ document.getElementById("inNote").addEventListener("input", e => {
     await migrateOldSave();
     profiles = await dbGetAll();
   } catch (e) {
-    alert("This browser blocked local database storage, so saving won't work. Try normal (non-private) browsing mode.");
+    modalAlert("Storage blocked", "This browser blocked local database storage, so saving won't work. Try normal (non-private) browsing mode.");
     profiles = [];
   }
   showHome();
+  loadSquadLocal();
+  /* keep our leaderboard number fresh for squadmates even if the tab isn't opened */
+  if (squadLocalData) squadAuth().then(() => squadSyncSoon()).catch(() => {});
 })();
 </script>
 </body>
