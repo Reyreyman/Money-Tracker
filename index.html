@@ -344,6 +344,51 @@ body.screen-shake { animation: scr-shake .45s linear; }
 .checkin-done { margin: 0; font-family: 'Baloo 2'; font-weight: 800; font-size: 17px; color: #3ECF8E; }
 @media (prefers-reduced-motion: reduce) { .streak-flame.pop { animation: none; } }
 
+/* streak main is tappable to toggle the calendar */
+.streak-main { cursor: pointer; }
+.cal-toggle {
+  margin-left: auto; border: 2.5px solid var(--ink); background: var(--surface); color: var(--ink);
+  border-radius: 999px; padding: 5px 11px; font-size: 16px; cursor: pointer; line-height: 1;
+  box-shadow: 2px 2px 0 var(--shadow); flex-shrink: 0;
+}
+.cal-toggle:hover { transform: translate(-1px,-1px); }
+.cal-toggle[aria-expanded="true"] { background: #FFC53D; }
+
+/* check-in calendar / heatmap */
+.streak-cal { flex-basis: 100%; width: 100%; margin-top: 6px; border-top: 2.5px dashed var(--ink); padding-top: 12px; }
+.cal-head { font-family: 'Baloo 2'; font-weight: 800; font-size: 16px; text-align: center; margin-bottom: 8px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.cal-wd { text-align: center; font-size: 11px; font-weight: 800; color: var(--muted); padding-bottom: 2px; }
+.cal-cell {
+  aspect-ratio: 1 / 1; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 800; border-radius: 9px; border: 2px solid var(--ink);
+  background: var(--surface); color: var(--muted-2);
+}
+.cal-cell.blank { border: none; background: transparent; }
+.cal-cell.off { background: var(--surface); opacity: .55; }
+.cal-cell.future { border-style: dashed; opacity: .4; }
+.cal-cell.on.manual { background: #FFC53D; color: var(--ink); }   /* manual check-in */
+.cal-cell.on.spend  { background: #5AB1F7; color: #10233a; }      /* auto via a spend */
+.cal-cell.is-today { box-shadow: 0 0 0 2.5px var(--accent); }
+.cal-legend { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 10px; font-size: 11.5px; font-weight: 800; color: var(--muted-2); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cal-dot { width: 13px; height: 13px; border-radius: 5px; border: 2px solid var(--ink); display: inline-block; }
+.cal-dot.manual { background: #FFC53D; }
+.cal-dot.spend { background: #5AB1F7; }
+.cal-dot.is-today { background: var(--surface); box-shadow: 0 0 0 2px var(--accent); }
+:root[data-theme="dark"] .cal-cell.on.spend { color: #cfe6ff; }
+
+/* shared squad streak banner (styled to echo the personal streak card) */
+.squad-streak {
+  display: flex; align-items: center; gap: 14px; margin: 4px 0 14px;
+  background: #FFF1E3; border: 3px solid var(--ink); border-radius: 16px; padding: 12px 16px;
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+:root[data-theme="dark"] .squad-streak { background: #2A2620; }
+.squad-streak-flame { font-size: 34px; line-height: 1; flex-shrink: 0; }
+.squad-streak-num { font-family: 'Baloo 2'; font-weight: 800; font-size: 22px; line-height: 1.05; }
+.squad-streak-sub { font-weight: 800; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+
 /* ---------- home tabs ---------- */
 .tab-row { display: flex; justify-content: center; gap: 12px; margin: 0 0 24px; }
 .tab-btn {
@@ -730,6 +775,13 @@ body.screen-shake { animation: scr-shake .45s linear; }
           <p class="sub">Code: <b id="squadCodeSmall"></b>
             <button class="icon-btn" id="squadCodeCopy" title="Copy code">📋</button>
             · ranked by spending this month</p>
+          <div class="squad-streak hidden" id="squadStreakBox">
+            <span class="squad-streak-flame" id="squadStreakFlame">🔥</span>
+            <div class="squad-streak-info">
+              <div class="squad-streak-num" id="squadStreakNum">No squad streak yet</div>
+              <div class="squad-streak-sub" id="squadStreakSub"></div>
+            </div>
+          </div>
           <div class="squad-milestone hidden" id="squadMilestone"></div>
           <ul class="board-list" id="boardList"></ul>
           <p class="none hidden" id="boardEmpty">Nobody on the board yet — share the code!</p>
@@ -780,20 +832,26 @@ body.screen-shake { animation: scr-shake .45s linear; }
       </div>
     </section>
 
-    <div class="stats-link-row">
-      <button class="stats-link" id="viewStatsBtn" type="button">📊 View Stats</button>
-    </div>
-
     <section class="card streak-card" id="streakCard">
-      <div class="streak-main">
+      <div class="streak-main" id="streakMain">
         <div class="streak-flame" id="streakFlame">🔥</div>
         <div class="streak-info">
           <div class="streak-num" id="streakNum">0 day streak!</div>
           <div class="streak-best" id="streakBest">Best: 0 days</div>
         </div>
+        <button class="cal-toggle" id="calToggle" type="button" aria-expanded="false" title="Show check-in calendar">📅</button>
       </div>
       <button class="checkin-btn" id="checkinBtn">I'm here today ✅</button>
       <p class="checkin-done hidden" id="checkinDone">Nice, you checked in today! 🎉</p>
+      <div class="streak-cal hidden" id="streakCal">
+        <div class="cal-head" id="calMonth"></div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-legend">
+          <span><i class="cal-dot manual"></i> Checked in</span>
+          <span><i class="cal-dot spend"></i> Logged a spend</span>
+          <span><i class="cal-dot is-today"></i> Today</span>
+        </div>
+      </div>
     </section>
 
     <section class="card mascot-card" id="mascotCard">
@@ -810,6 +868,10 @@ body.screen-shake { animation: scr-shake .45s linear; }
         <div class="bubble"><span id="bubbleText"></span><span class="caret">▌</span></div>
       </div>
     </section>
+
+    <div class="stats-link-row">
+      <button class="stats-link" id="viewStatsBtn" type="button">📊 View Stats</button>
+    </div>
 
     <section class="card form-card">
       <h2>Add a spend</h2>
@@ -1102,6 +1164,7 @@ function newProfileObj(name) {
     entries: [],
     customCats: [],
     checkins: [],
+    checkinKinds: {},  // dayKey -> "manual" | "spend" (for the calendar view; local only)
     income: null,      // optional monthly income/budget — local & private, powers savings
   };
 }
@@ -1456,7 +1519,11 @@ async function addEntry() {
     date: dateEl.value || todayStr(),
   });
   /* adding a spend counts as today's (Manila) check-in too */
-  if (!current.checkins.includes(manilaTodayStr())) current.checkins.push(manilaTodayStr());
+  current.checkinKinds = current.checkinKinds || {};
+  if (!current.checkins.includes(manilaTodayStr())) {
+    current.checkins.push(manilaTodayStr());
+    if (!current.checkinKinds[manilaTodayStr()]) current.checkinKinds[manilaTodayStr()] = "spend";
+  }
   await saveCurrent();
   amtEl.value = ""; noteEl.value = ""; catTouched = false;
   const btn = document.getElementById("addBtn");
@@ -1846,6 +1913,48 @@ function renderStreak() {
   const done = hasCheckedInToday();
   document.getElementById("checkinBtn").classList.toggle("hidden", done);
   document.getElementById("checkinDone").classList.toggle("hidden", !done);
+  renderStreakCalendar();
+}
+
+/* Collapsible check-in calendar for the current (Manila) month. Fills each day
+   the user checked in — differentiating a manual check-in from an auto one via
+   logging a spend — reading the local checkins + checkinKinds (no new storage
+   schema; checkinKinds is just a new field on the profile object). */
+const WEEK_LABELS = ["Mo","Tu","We","Th","Fr","Sa","Su"];
+function renderStreakCalendar() {
+  const grid = document.getElementById("calGrid");
+  if (!grid || !current) return;
+  const set = new Set(current.checkins || []);
+  const kinds = current.checkinKinds || {};
+  const today = manilaTodayStr();
+  const monthKey = today.slice(0, 7);
+  const first = parseDate(monthKey + "-01");
+  const lead = (first.getDay() + 6) % 7;                 // Mon-first offset
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  document.getElementById("calMonth").textContent =
+    first.toLocaleString("en", { month: "long", year: "numeric" });
+  let html = WEEK_LABELS.map(w => '<span class="cal-wd">' + w + '</span>').join("");
+  for (let i = 0; i < lead; i++) html += '<span class="cal-cell blank"></span>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = monthKey + "-" + String(d).padStart(2, "0");
+    const checked = set.has(key);
+    const kind = kinds[key];
+    const cls = ["cal-cell"];
+    if (checked) cls.push("on", kind === "spend" ? "spend" : "manual");
+    else if (key > today) cls.push("future");
+    else cls.push("off");
+    if (key === today) cls.push("is-today");
+    html += '<span class="' + cls.join(" ") + '">' + d + '</span>';
+  }
+  grid.innerHTML = html;
+}
+function toggleStreakCal(force) {
+  const cal = document.getElementById("streakCal");
+  const btn = document.getElementById("calToggle");
+  const open = force === undefined ? cal.classList.contains("hidden") : force;
+  cal.classList.toggle("hidden", !open);
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  if (open) renderStreakCalendar();
 }
 
 function celebrateStreak() {
@@ -1859,9 +1968,11 @@ function celebrateStreak() {
 async function checkInToday() {
   if (!current) return;
   current.checkins = current.checkins || [];
+  current.checkinKinds = current.checkinKinds || {};
   if (current.checkins.includes(manilaTodayStr())) { renderStreak(); return; }
   const before = computeStreak(current.checkins);
   current.checkins.push(manilaTodayStr());
+  current.checkinKinds[manilaTodayStr()] = "manual";
   await saveCurrent();
   renderStreak();
   if (computeStreak(current.checkins) > before) celebrateStreak();
@@ -1983,15 +2094,17 @@ function startBoard() {
       });
     });
     squadLastRows = rows;
-    renderBoard(rows);
+    renderBoard(rows, true);   // authoritative full member set
   }, () => {});
   squadSyncSoon();
 }
 
 let squadLastRows = [];
 let prevBoardRanks = {};   // uid -> last rank index, to detect rank changes
-function refreshBoard() { if (squadLastRows.length) renderBoard(squadLastRows); }
-function renderBoard(rows) {
+/* doc-driven refreshes (reactions/streak/milestone) re-render with the last
+   known rows but must NOT drive squad-streak writes — only member snapshots do. */
+function refreshBoard() { if (squadLastRows.length) renderBoard(squadLastRows, false); }
+function renderBoard(rows, fromMembers) {
   rows.sort((a,b) => b.spent - a.spent || a.nickname.localeCompare(b.nickname));
   const list = document.getElementById("boardList");
   list.innerHTML = "";
@@ -2041,8 +2154,59 @@ function renderBoard(rows) {
     list.appendChild(li);
   });
   prevBoardRanks = newRanks;
+  renderSquadStreak(rows, fromMembers);
   renderSquadMilestone(rows);
   renderSquadRoast(rows);
+}
+
+/* ---- shared squad streak (Firestore) ----
+   A day counts only if EVERY member checked in that (Manila) day. The running
+   count + the last completed day live on the squad doc; if a day passes without
+   everyone in, it resets to 0 for the whole squad. Reset boundary is Manila
+   midnight, same as the personal streak and reactions. */
+let squadStreakWriteSig = null;
+function squadStreakState() {
+  const s = (squadDocData && squadDocData.squadStreak) || {};
+  return { count: Number(s.count) || 0, lastDay: s.lastDay || "" };
+}
+function computeSquadStreak(rows) {
+  const today = manilaTodayStr(), yday = prevDayKey(today);
+  const st = squadStreakState();
+  const allIn = rows.length > 0 && rows.every(r => r.checkedInDay === today);
+  let display;
+  if (allIn) display = (st.lastDay === today) ? st.count : (st.lastDay === yday ? st.count + 1 : 1);
+  else display = (st.lastDay === today || st.lastDay === yday) ? st.count : 0;  // stale -> broken
+  return { today, yday, allIn, st, display };
+}
+function renderSquadStreak(rows, fromMembers) {
+  const box = document.getElementById("squadStreakBox");
+  if (!box) return;
+  if (!rows.length) { box.classList.add("hidden"); return; }
+  const { today, yday, allIn, st, display } = computeSquadStreak(rows);
+  box.classList.remove("hidden");
+  document.getElementById("squadStreakNum").textContent =
+    display === 0 ? "No squad streak yet" : display + "-day squad streak! 🎉";
+  const waiting = rows.filter(r => r.checkedInDay !== today).length;
+  let sub;
+  if (allIn) sub = "Everyone's checked in today — keep it rolling!";
+  else if (display > 0) sub = waiting + " more " + (waiting === 1 ? "member" : "members") + " to check in today to keep it alive";
+  else sub = "Everyone checks in the same day to build a squad streak";
+  document.getElementById("squadStreakSub").textContent = sub;
+  /* advance/reset the shared counter only from a real member snapshot */
+  if (fromMembers) reconcileSquadStreak(allIn, today, yday, st, display);
+}
+/* Best-effort convergent write: every client computes the same target from the
+   same snapshot, so concurrent writes agree; a signature guard avoids loops. */
+function reconcileSquadStreak(allIn, today, yday, st, display) {
+  if (!squadLocalData || !squadUser) return;
+  let target = null;
+  if (allIn && st.lastDay !== today) target = { count: display, lastDay: today };
+  else if (!allIn && st.count !== 0 && st.lastDay !== today && st.lastDay !== yday) target = { count: 0, lastDay: "" };
+  if (!target) return;
+  const sig = target.count + "|" + target.lastDay;
+  if (sig === squadStreakWriteSig) return;
+  squadStreakWriteSig = sig;
+  squadRef(squadLocalData.code).update({ squadStreak: target }).catch(() => { squadStreakWriteSig = null; });
 }
 
 /* ---- emoji reactions on rank changes (1 per person per day, resets 12AM Manila) ---- */
@@ -2322,6 +2486,8 @@ document.getElementById("addBtn").onclick = addEntry;
 document.getElementById("backBtn").onclick = showHome;
 document.getElementById("resetBtn").onclick = resetCurrent;
 document.getElementById("checkinBtn").onclick = checkInToday;
+document.getElementById("calToggle").onclick = (e) => { e.stopPropagation(); toggleStreakCal(); };
+document.getElementById("streakMain").onclick = () => toggleStreakCal();
 document.getElementById("savingsSetBtn").onclick = setIncome;
 document.getElementById("savingsEditBtn").onclick = setIncome;
 document.getElementById("viewStatsBtn").onclick = () => {
