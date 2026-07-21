@@ -365,6 +365,61 @@ body.screen-shake { animation: scr-shake .45s linear; }
   object-fit: cover; background: var(--surface); flex-shrink: 0;
 }
 @media (max-width: 700px) { .squad-choice { grid-template-columns: 1fr; } }
+.board-list li { position: relative; }
+.board-list li.moved { animation: board-bump .5s ease; }
+@keyframes board-bump { 0%,100% { transform: translateX(0); } 30% { transform: translateX(4px); } 60% { transform: translateX(-2px); } }
+
+/* rank-change arrows */
+.rank-move { font-size: 12.5px; font-weight: 800; border-radius: 999px; padding: 1px 7px; flex-shrink: 0; border: 2px solid var(--ink); }
+.rank-move.up { background: #CFF5E4; color: #1B7a4f; }
+.rank-move.down { background: #FFD9D9; color: #9c2b2b; }
+:root[data-theme="dark"] .rank-move.up { background: #1f3b30; color: #7ee0b1; }
+:root[data-theme="dark"] .rank-move.down { background: #3a2626; color: #eaa; }
+
+/* received reactions */
+.react-list { display: inline-flex; gap: 3px; flex-shrink: 0; }
+.react-chip { font-size: 14px; background: var(--surface); border: 2px solid var(--ink); border-radius: 999px; padding: 0 6px; line-height: 1.7; }
+.react-chip i { font-style: normal; font-weight: 800; font-size: 11px; margin-left: 2px; color: var(--muted-2); }
+
+/* react button + popover */
+.react-btn {
+  flex-shrink: 0; border: 2px solid var(--ink); background: var(--surface); color: var(--ink);
+  border-radius: 999px; padding: 3px 8px; font-size: 12.5px; font-weight: 800; cursor: pointer; margin-left: 6px;
+}
+.react-btn:hover { background: #FFF1E3; }
+.react-btn.pulse { animation: react-pulse 1.1s ease infinite; border-color: var(--accent); }
+@keyframes react-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,107,.5); } 50% { box-shadow: 0 0 0 5px rgba(255,107,107,0); } }
+.react-pop {
+  position: absolute; right: 8px; bottom: -8px; transform: translateY(100%);
+  z-index: 5; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  background: var(--surface); border: 2.5px solid var(--ink); border-radius: 14px;
+  padding: 6px 8px; box-shadow: 4px 4px 0 var(--shadow); max-width: 260px;
+}
+.react-opt { border: none; background: transparent; font-size: 20px; cursor: pointer; padding: 2px 4px; border-radius: 8px; }
+.react-opt:hover { background: #FFF1E3; transform: scale(1.15); }
+.react-hint, .react-none { font-size: 11.5px; font-weight: 800; color: var(--muted); padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { .board-list li.moved, .react-btn.pulse { animation: none; } }
+
+/* squad milestone banner */
+.squad-milestone {
+  margin: 4px 0 14px; text-align: center; font-family: 'Baloo 2'; font-weight: 800; font-size: 16px;
+  background: #FFF1C2; border: 3px solid var(--ink); border-radius: 14px; padding: 10px 14px;
+  box-shadow: 4px 4px 0 var(--shadow);
+}
+:root[data-theme="dark"] .squad-milestone { background: #3a341f; }
+.squad-milestone.pop { animation: milestone-pop .6s ease; }
+@keyframes milestone-pop { 0% { transform: scale(.9); } 45% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .squad-milestone.pop { animation: none; } }
+
+/* weekly roast */
+.board-hint { color: var(--muted); font-weight: 700; font-size: 12.5px; margin: 4px 2px 0; }
+.squad-roast {
+  margin-top: 14px; display: flex; flex-direction: column; gap: 4px;
+  background: #EAF6FF; border: 2.5px solid var(--ink); border-radius: 14px; padding: 12px 14px;
+}
+:root[data-theme="dark"] .squad-roast { background: #1E2733; }
+.roast-label { font-family: 'Baloo 2'; font-weight: 800; font-size: 14px; }
+.roast-line { font-weight: 800; font-size: 14px; }
 
 /* ---------- monthly recap ---------- */
 .recap-card { background: #EAF6FF; }
@@ -654,8 +709,11 @@ body.screen-shake { animation: scr-shake .45s linear; }
           <p class="sub">Code: <b id="squadCodeSmall"></b>
             <button class="icon-btn" id="squadCodeCopy" title="Copy code">📋</button>
             · ranked by spending this month</p>
+          <div class="squad-milestone hidden" id="squadMilestone"></div>
           <ul class="board-list" id="boardList"></ul>
           <p class="none hidden" id="boardEmpty">Nobody on the board yet — share the code!</p>
+          <p class="board-hint">Tap 😊＋ on a friend when they move to cheer their rank change (2 reactions/day).</p>
+          <div class="squad-roast hidden" id="squadRoast"></div>
         </div>
         <div class="card form-card">
           <h2>Your spending setup</h2>
@@ -917,6 +975,7 @@ const modalEls = {
 };
 let modalResolve = null;
 let modalHasInput = false;
+let modalCountdownTimer = null;   // ticking countdown on a timed-confirm OK button
 
 function openModal(opts) {
   if (modalResolve) closeModal(modalHasInput ? null : false);
@@ -930,15 +989,36 @@ function openModal(opts) {
     modalEls.input.value = opts.initial || "";
     modalEls.input.placeholder = opts.placeholder || "";
     modalEls.input.maxLength = opts.maxLength || 24;
-    modalEls.ok.textContent = opts.okText || "OK";
+    const baseOk = opts.okText || "OK";
+    modalEls.ok.textContent = baseOk;
     modalEls.ok.classList.toggle("danger", !!opts.danger);
     modalEls.cancel.classList.toggle("hidden", !!opts.alertOnly);
     modalEls.overlay.classList.remove("hidden");
+    /* timed confirm: OK starts disabled and counts down on the button itself;
+       cancel stays available immediately (no delay). */
+    clearInterval(modalCountdownTimer);
+    modalEls.ok.disabled = false;
+    const secs = Number(opts.countdown) || 0;
+    if (secs > 0) {
+      let n = secs;
+      modalEls.ok.disabled = true;
+      modalEls.ok.textContent = baseOk + " (" + n + ")";
+      modalCountdownTimer = setInterval(() => {
+        n--;
+        if (n > 0) { modalEls.ok.textContent = baseOk + " (" + n + ")"; }
+        else {
+          clearInterval(modalCountdownTimer); modalCountdownTimer = null;
+          modalEls.ok.textContent = baseOk; modalEls.ok.disabled = false; modalEls.ok.focus();
+        }
+      }, 1000);
+    }
     if (opts.input) setTimeout(() => { modalEls.input.focus(); modalEls.input.select(); }, 60);
-    else modalEls.ok.focus();
+    else if (!modalEls.ok.disabled) modalEls.ok.focus();
   });
 }
 function closeModal(result) {
+  clearInterval(modalCountdownTimer); modalCountdownTimer = null;
+  modalEls.ok.disabled = false;
   modalEls.overlay.classList.add("hidden");
   const r = modalResolve; modalResolve = null;
   if (r) r(result);
@@ -946,6 +1026,7 @@ function closeModal(result) {
 modalEls.form.addEventListener("submit", e => {
   e.preventDefault();
   if (!modalResolve) return;
+  if (modalEls.ok.disabled) return;   // countdown still running
   if (modalHasInput) {
     const v = modalEls.input.value.trim();
     if (!v) { modalEls.input.focus(); return; }
@@ -1312,17 +1393,29 @@ async function addEntry() {
 /* ================= reset ================= */
 async function resetCurrent() {
   if (!current) return;
-  if (!await modalConfirm('Reset "'+current.name+'"?', "This erases ALL its spends and custom categories forever. Other trackers are not affected.", { okText: "Reset", danger: true })) return;
-  if (!await modalConfirm("Last chance!", "This cannot be undone. Really reset?", { okText: "Really reset", danger: true })) return;
+  /* Full local reset (this tracker): spends, custom categories AND the
+     check-in streak. Settings are kept. If this tracker feeds a squad, its
+     leaderboard numbers get zeroed too so squadmates don't see stale stats. */
+  const feedsSquad = squadLocalData && current.id === squadLinkedId();
+  const msg = 'Are you sure? This will delete your data for "' + current.name + '": '
+    + 'all spends, your custom categories, and your check-in streak (' + computeStreak(current.checkins) + '-day). '
+    + (feedsSquad ? 'Your spending on the squad leaderboard will be zeroed too. ' : '')
+    + 'Your settings (theme, sound, mascot) are kept. This cannot be undone.';
+  const ok = await modalConfirm("Delete this tracker's data? 🗑️", msg,
+    { okText: "Confirm Delete", danger: true, countdown: 3 });
+  if (!ok) return;
   current.entries = [];
   current.customCats = [];
+  current.checkins = [];
   selectedCat = "food"; catTouched = false;
   await saveCurrent();
   renderCatChips();
   renderAll();
+  renderStreak();
   mascotSync();
   speak(1);
-  squadSyncSoon();
+  /* zero our leaderboard contribution right away (not just on the next debounce) */
+  squadForceSync();
 }
 
 /* ================= mascot ================= */
@@ -1691,6 +1784,7 @@ async function checkInToday() {
   await saveCurrent();
   renderStreak();
   if (computeStreak(current.checkins) > before) celebrateStreak();
+  squadSyncSoon();   // publish updated streak / checked-in-today for squad milestones
 }
 
 /* ================= squad leaderboard (Firebase) ================= */
@@ -1791,10 +1885,22 @@ function startBoard() {
     document.getElementById("squadRenameBtn").classList.toggle("hidden", !squadUser || squadDocData.ownerUID !== squadUser.uid);
     renderSquadSettings();
     squadShow("squadBoard");
+    refreshBoard();   // reactions/milestones live on the squad doc — re-render on doc change
   }, () => squadShow("squadOffline"));
   squadUnsubMembers = ref.collection("members").onSnapshot(snap => {
     const rows = [];
-    snap.forEach(d => rows.push({ uid: d.id, nickname: String(d.data().nickname || "?"), spent: Number(d.data().spentThisMonth) || 0, avatar: d.data().avatar }));
+    snap.forEach(d => {
+      const x = d.data();
+      rows.push({
+        uid: d.id,
+        nickname: String(x.nickname || "?"),
+        spent: Number(x.spentThisMonth) || 0,
+        spentWeek: Number(x.spentThisWeek) || 0,
+        streak: Number(x.streak) || 0,
+        checkedInDay: x.checkedInDay || "",
+        avatar: x.avatar,
+      });
+    });
     squadLastRows = rows;
     renderBoard(rows);
   }, () => {});
@@ -1802,6 +1908,7 @@ function startBoard() {
 }
 
 let squadLastRows = [];
+let prevBoardRanks = {};   // uid -> last rank index, to detect rank changes
 function refreshBoard() { if (squadLastRows.length) renderBoard(squadLastRows); }
 function renderBoard(rows) {
   rows.sort((a,b) => b.spent - a.spent || a.nickname.localeCompare(b.nickname));
@@ -1809,22 +1916,135 @@ function renderBoard(rows) {
   list.innerHTML = "";
   document.getElementById("boardEmpty").classList.toggle("hidden", rows.length > 0);
   const medals = ["🥇","🥈","🥉"];
+  const reactions = (squadDocData && squadDocData.reactions) || {};
+  const newRanks = {};
   rows.forEach((r, i) => {
+    newRanks[r.uid] = i;
     const isMe = squadUser && r.uid === squadUser.uid;
     /* my own row reflects my current pick instantly; others use their synced avatar */
     const av = isMe ? settings.avatar : r.avatar;
+    /* rank change vs the previous snapshot this viewer saw */
+    const was = prevBoardRanks[r.uid];
+    const moved = (was === undefined || was === i) ? 0 : (was - i); // + up, - down
+    const moveTag = moved > 0 ? '<span class="rank-move up" title="Moved up">▲'+moved+'</span>'
+                  : moved < 0 ? '<span class="rank-move down" title="Moved down">▼'+(-moved)+'</span>' : '';
+    /* reactions this member has received (grouped emoji + count) */
+    const mine = Object.values(reactions).filter(x => x && x.target === r.uid);
+    const byEmoji = {};
+    mine.forEach(x => { byEmoji[x.emoji] = (byEmoji[x.emoji] || 0) + 1; });
+    const reactHtml = Object.keys(byEmoji).length
+      ? '<span class="react-list">' + Object.entries(byEmoji).map(([e,c]) =>
+          '<span class="react-chip">'+e+(c>1?'<i>'+c+'</i>':'')+'</span>').join('') + '</span>'
+      : '';
+    /* others can react (highlighted when this member just moved); never react to yourself */
+    const canReact = !isMe && squadUser;
+    const reactBtn = canReact
+      ? '<button class="react-btn'+(moved!==0?' pulse':'')+'" data-uid="'+r.uid+'" title="React">😊＋</button>'
+      : '';
+
     const li = document.createElement("li");
     const cls = [];
     if (i < 3) cls.push("rank-" + (i + 1));
     if (isMe) cls.push("me");
+    if (moved !== 0) cls.push("moved");
     li.className = cls.join(" ");
     li.innerHTML =
       '<span class="rank-badge">'+(medals[i] || (i+1))+'</span>'+
       '<img class="board-avatar" src="'+avatarSrc(av)+'" alt="">'+
       '<span class="board-nick">'+esc(r.nickname)+(isMe ? ' <span class="you-tag">you</span>' : '')+'</span>'+
-      '<b class="board-amt">'+peso(r.spent)+'</b>';
+      moveTag + reactHtml +
+      '<b class="board-amt">'+peso(r.spent)+'</b>'+
+      reactBtn;
+    const rb = li.querySelector(".react-btn");
+    if (rb) rb.onclick = (ev) => { ev.stopPropagation(); openReactPicker(rb, r.uid); };
     list.appendChild(li);
   });
+  prevBoardRanks = newRanks;
+  renderSquadMilestone(rows);
+  renderSquadRoast(rows);
+}
+
+/* ---- emoji reactions on rank changes (max 2 per person per day) ---- */
+const REACTION_EMOJIS = ["🔥","😂","👏","😮","💪","🎉"];
+const REACTIONS_PER_DAY = 2;
+function myReactionsToday() {
+  const reactions = (squadDocData && squadDocData.reactions) || {};
+  const today = todayStr();
+  return Object.values(reactions).filter(x => x && x.by === (squadUser && squadUser.uid) && x.day === today).length;
+}
+function openReactPicker(btn, targetUid) {
+  document.querySelectorAll(".react-pop").forEach(p => p.remove());
+  const left = myReactionsToday();
+  const pop = document.createElement("div");
+  pop.className = "react-pop";
+  if (left >= REACTIONS_PER_DAY) {
+    pop.innerHTML = '<span class="react-none">That\'s your 2 reactions for today 💤</span>';
+  } else {
+    REACTION_EMOJIS.forEach(e => {
+      const b = document.createElement("button");
+      b.className = "react-opt"; b.textContent = e;
+      b.onclick = (ev) => { ev.stopPropagation(); pop.remove(); addReaction(targetUid, e); };
+      pop.appendChild(b);
+    });
+    const hint = document.createElement("span");
+    hint.className = "react-hint"; hint.textContent = (REACTIONS_PER_DAY - left) + " left today";
+    pop.appendChild(hint);
+  }
+  btn.parentNode.appendChild(pop);
+  setTimeout(() => document.addEventListener("click", closeReactPickerOnce, { once: true }), 0);
+}
+function closeReactPickerOnce() { document.querySelectorAll(".react-pop").forEach(p => p.remove()); }
+async function addReaction(targetUid, emoji) {
+  if (!squadLocalData || !squadUser) return;
+  if (myReactionsToday() >= REACTIONS_PER_DAY) return;
+  const day = todayStr();
+  const seq = myReactionsToday(); // 0 or 1
+  const id = squadUser.uid + "_" + day + "_" + seq;
+  try {
+    await squadRef(squadLocalData.code).update({
+      ["reactions." + id]: { by: squadUser.uid, byNick: squadLocalData.nickname, target: targetUid, emoji, day },
+    });
+    if (soundAudible()) sndPop();
+  } catch (e) { /* offline — ignore */ }
+}
+
+/* ---- squad milestones (thresholds kept simple + easy to tweak) ---- */
+const SQUAD_MILESTONES = {
+  minMembers: 2,          // need at least this many for a "squad" milestone
+  combinedStreak: 10,     // combined current streak across everyone
+};
+function renderSquadMilestone(rows) {
+  const el = document.getElementById("squadMilestone");
+  if (!el) return;
+  const today = todayStr();
+  const enough = rows.length >= SQUAD_MILESTONES.minMembers;
+  const allIn = enough && rows.every(r => r.checkedInDay === today);
+  const combined = rows.reduce((s,r) => s + (r.streak || 0), 0);
+  const streakHit = enough && combined >= SQUAD_MILESTONES.combinedStreak;
+  let msg = "";
+  if (allIn) msg = "🎉 Everyone checked in today — full squad!";
+  else if (streakHit) msg = "🔥 Squad combined streak: " + combined + " days strong!";
+  el.classList.toggle("hidden", !msg);
+  if (msg) {
+    el.textContent = msg;
+    el.classList.remove("pop"); void el.offsetWidth; el.classList.add("pop");
+  }
+}
+
+/* ---- weekly roast: auto-generated, refreshes each week from spend data ---- */
+function renderSquadRoast(rows) {
+  const el = document.getElementById("squadRoast");
+  if (!el) return;
+  if (rows.length < 2) { el.classList.add("hidden"); el.textContent = ""; return; }
+  const byWeek = [...rows].sort((a,b) => b.spentWeek - a.spentWeek || a.nickname.localeCompare(b.nickname));
+  const top = byWeek[0];
+  const low = byWeek[byWeek.length - 1];
+  const lines = [];
+  if (top.spentWeek > 0) lines.push("👑 " + esc(top.nickname) + " is spending #1 this week (" + peso(top.spentWeek) + ")");
+  if (low.uid !== top.uid) lines.push("🌿 " + esc(low.nickname) + " spent the least this week (" + peso(low.spentWeek) + ")");
+  if (!lines.length) { el.classList.add("hidden"); el.textContent = ""; return; }
+  el.classList.remove("hidden");
+  el.innerHTML = '<span class="roast-label">This week\'s tea ☕</span>' + lines.map(l => '<span class="roast-line">'+l+'</span>').join("");
 }
 
 /* --- linked tracker picker --- */
@@ -1847,16 +2067,50 @@ function renderSquadSettings() {
     row.appendChild(b);
   });
 }
+/* the tracker id that feeds the squad (explicit pick, else the only tracker) */
+function squadLinkedId() {
+  if (!squadLocalData) return null;
+  if (squadLocalData.trackerId) return squadLocalData.trackerId;
+  return profiles.length === 1 ? profiles[0].id : null;
+}
+function squadLinkedProfile() {
+  const id = squadLinkedId();
+  return id ? (profiles.find(x => x.id === id) || null) : null;
+}
 /* total spent this month by the linked tracker */
 function squadSpentNow() {
-  if (!squadLocalData) return 0;
-  const p = profiles.find(x => x.id === squadLocalData.trackerId);
+  const p = squadLinkedProfile();
   if (!p) return 0;
   const m = thisMonthKey();
-  const total = p.entries.filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
+  const total = (p.entries || []).filter(e => e.date.slice(0,7) === m).reduce((s,e) => s + e.amount, 0);
   return Math.round(total * 100) / 100;
 }
-/* push {nickname, spentThisMonth, avatar} to our member doc, debounced */
+/* total spent this (Mon–Sun) week by the linked tracker — powers the weekly roast */
+function squadSpentThisWeek() {
+  const p = squadLinkedProfile();
+  if (!p) return 0;
+  const ws = weekStart(new Date());
+  const total = (p.entries || []).filter(e => parseDate(e.date) >= ws).reduce((s,e) => s + e.amount, 0);
+  return Math.round(total * 100) / 100;
+}
+/* current check-in streak + whether we checked in today, for squad milestones */
+function squadStreakNow() { const p = squadLinkedProfile(); return p ? computeStreak(p.checkins) : 0; }
+function squadCheckedInDay() {
+  const p = squadLinkedProfile();
+  return p && (p.checkins || []).includes(todayStr()) ? todayStr() : "";
+}
+/* the member-doc payload we publish (Firestore only — IndexedDB is untouched) */
+function buildMemberDoc(nick) {
+  return {
+    nickname: nick != null ? nick : (squadLocalData ? squadLocalData.nickname : ""),
+    spentThisMonth: squadSpentNow(),
+    spentThisWeek: squadSpentThisWeek(),
+    streak: squadStreakNow(),
+    checkedInDay: squadCheckedInDay(),
+    avatar: settings.avatar,
+  };
+}
+/* push our member doc, debounced */
 function squadSyncSoon() {
   if (!squadLocalData) return;
   clearTimeout(squadSyncTimer);
@@ -1864,15 +2118,16 @@ function squadSyncSoon() {
     try {
       await squadAuth();
       if (!squadLocalData) return;
-      const v = squadSpentNow();
-      const sig = v + "|" + squadLocalData.nickname + "|" + settings.avatar;
+      const doc = buildMemberDoc();
+      const sig = [doc.spentThisMonth, doc.spentThisWeek, doc.streak, doc.checkedInDay, doc.nickname, doc.avatar].join("|");
       if (sig === squadLastPushed) return;
-      await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid)
-        .set({ nickname: squadLocalData.nickname, spentThisMonth: v, avatar: settings.avatar });
+      await squadRef(squadLocalData.code).collection("members").doc(squadUser.uid).set(doc);
       squadLastPushed = sig;
     } catch (e) { /* offline — next change retries */ }
   }, 600);
 }
+/* force an immediate re-push (used on reset so a zeroed contribution shows fast) */
+function squadForceSync() { if (!squadLocalData) return; squadLastPushed = null; squadSyncSoon(); }
 
 /* --- create / join --- */
 function genSquadCode() {
@@ -1899,7 +2154,7 @@ async function submitCreateSquad(ev) {
     await squadRef(code).set({ name, createdAt: Date.now(), ownerUID: user.uid });
     saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
     squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow(), avatar: settings.avatar });
+    await squadRef(code).collection("members").doc(user.uid).set(buildMemberDoc(nick));
     document.getElementById("codeBig").textContent = code;
     squadShow("squadReveal");
   } catch (e) {
@@ -1925,7 +2180,7 @@ async function submitJoinSquad(ev) {
     }
     saveSquadLocal({ code, nickname: nick, trackerId: profiles.length === 1 ? profiles[0].id : null });
     squadLastPushed = null;
-    await squadRef(code).collection("members").doc(user.uid).set({ nickname: nick, spentThisMonth: squadSpentNow(), avatar: settings.avatar });
+    await squadRef(code).collection("members").doc(user.uid).set(buildMemberDoc(nick));
     startBoard();
   } catch (e) {
     squadShow("squadJoinForm");
