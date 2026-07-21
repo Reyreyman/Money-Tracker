@@ -148,6 +148,27 @@ h1, h2 { font-family: 'Baloo 2', cursive; margin: 0; }
 :root[data-theme="dark"] .stats-link { box-shadow: 4px 4px 0 var(--shadow), 0 0 0 3px rgba(217,119,87,.22); }
 :root[data-theme="dark"] .stats-link:hover { box-shadow: 6px 6px 0 var(--shadow), 0 0 14px 3px rgba(217,119,87,.5); }
 
+/* ---------- personal savings ---------- */
+.card.savings-card { background: #EAF7EE; padding: 16px 20px; }
+:root[data-theme="dark"] .card.savings-card { background: #1E2A22; }
+.savings-set { display: flex; align-items: center; gap: 14px; }
+.savings-main { flex: 1; min-width: 0; }
+.savings-label { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--muted-2); }
+.savings-amt { font-family: 'Baloo 2'; font-size: 30px; font-weight: 800; line-height: 1.05; color: #1F9254; }
+:root[data-theme="dark"] .savings-amt { color: #58D3A0; }
+.savings-amt.over { color: #C24545; }
+:root[data-theme="dark"] .savings-amt.over { color: #E58F87; }
+.savings-sub { font-size: 13px; font-weight: 700; color: var(--muted); margin-top: 3px; }
+.savings-edit { flex-shrink: 0; font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--ink); font-weight: 800; }
+.savings-unset { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.savings-prompt { font-weight: 800; color: var(--muted-2); }
+.savings-cta {
+  border: 2.5px solid var(--ink); background: var(--surface); color: var(--ink);
+  border-radius: 999px; padding: 8px 18px; font-family: 'Nunito'; font-weight: 800; font-size: 14px;
+  cursor: pointer; box-shadow: 3px 3px 0 var(--shadow); flex-shrink: 0;
+}
+.savings-cta:hover { transform: translate(-1px,-1px); }
+
 .card {
   background: var(--surface); border: 3px solid var(--ink); border-radius: 22px;
   box-shadow: 5px 5px 0 var(--shadow); padding: 20px 20px 22px; margin-bottom: 22px;
@@ -743,6 +764,22 @@ body.screen-shake { animation: scr-shake .45s linear; }
       <div class="sticker s-mint"><div class="stat-label">Selected range</div><div class="stat-num" id="statRange">₱0</div></div>
     </section>
 
+    <!-- personal savings (stays 100% local — never sent to the squad/Firebase) -->
+    <section class="card savings-card" id="savingsCard">
+      <div class="savings-set hidden" id="savingsSet">
+        <div class="savings-main">
+          <div class="savings-label">Saved this month 🐷</div>
+          <div class="savings-amt" id="savingsAmt">₱0</div>
+          <div class="savings-sub" id="savingsSub"></div>
+        </div>
+        <button class="icon-btn savings-edit" id="savingsEditBtn" title="Edit your monthly income">✎ Income</button>
+      </div>
+      <div class="savings-unset" id="savingsUnset">
+        <span class="savings-prompt">🐷 Set your income to track savings</span>
+        <button class="savings-cta" id="savingsSetBtn" type="button">Set income</button>
+      </div>
+    </section>
+
     <div class="stats-link-row">
       <button class="stats-link" id="viewStatsBtn" type="button">📊 View Stats</button>
     </div>
@@ -1065,6 +1102,7 @@ function newProfileObj(name) {
     entries: [],
     customCats: [],
     checkins: [],
+    income: null,      // optional monthly income/budget — local & private, powers savings
   };
 }
 
@@ -1277,6 +1315,42 @@ function renderStats(filtered) {
   return rangeTotal;
 }
 
+/* ================= personal savings (local & private) =================
+   Savings = monthly income − total spent this month. Income lives on the
+   profile (IndexedDB) and is NEVER sent to the squad/Firebase. When income
+   isn't set we hide the number entirely and nudge instead of faking ₱0. */
+const hasIncome = () => !!current && typeof current.income === "number" && current.income > 0;
+function renderSavings() {
+  if (!current) return;
+  const setEl = document.getElementById("savingsSet");
+  const unsetEl = document.getElementById("savingsUnset");
+  const on = hasIncome();
+  setEl.classList.toggle("hidden", !on);
+  unsetEl.classList.toggle("hidden", on);
+  if (!on) return;
+  const spent = monthTotal();
+  const saved = Math.round((current.income - spent) * 100) / 100;
+  const amtEl = document.getElementById("savingsAmt");
+  amtEl.textContent = peso(saved);
+  amtEl.classList.toggle("over", saved < 0);
+  document.getElementById("savingsSub").textContent =
+    (saved < 0 ? "Over budget · " : "") + "Income " + peso(current.income) + " · spent " + peso(spent) + " this month";
+}
+async function setIncome() {
+  if (!current) return;
+  const initial = hasIncome() ? String(current.income) : "";
+  const raw = await modalPrompt("Monthly income / budget", {
+    message: "Set the monthly income or budget for this tracker. Enter 0 to remove it. This stays on your device and is never shared with your squad.",
+    initial, placeholder: "e.g. 20000", okText: "Save", maxLength: 12,
+  });
+  if (raw === null) return;                 // cancelled
+  const n = parseFloat(String(raw).replace(/[^0-9.]/g, ""));
+  current.income = (!n || n <= 0) ? null : Math.round(n * 100) / 100;
+  await saveCurrent();
+  renderSavings();
+  if (soundAudible()) sndPop();
+}
+
 /* Recap, month-by-month + donut charts and the weekly summary moved to
    stats.html (a separate page reading the same IndexedDB). */
 
@@ -1314,6 +1388,7 @@ function renderAll() {
   if (!current) return;
   const filtered = filteredEntries();
   renderStats(filtered);
+  renderSavings();   // keep the running savings figure in sync with spends
   const hasAny = current.entries.length > 0;
   document.getElementById("emptyCard").classList.toggle("hidden", hasAny);
   document.getElementById("content").classList.toggle("hidden", !hasAny);
@@ -2241,6 +2316,8 @@ document.getElementById("addBtn").onclick = addEntry;
 document.getElementById("backBtn").onclick = showHome;
 document.getElementById("resetBtn").onclick = resetCurrent;
 document.getElementById("checkinBtn").onclick = checkInToday;
+document.getElementById("savingsSetBtn").onclick = setIncome;
+document.getElementById("savingsEditBtn").onclick = setIncome;
 document.getElementById("viewStatsBtn").onclick = () => {
   if (current) location.href = "stats.html?id=" + encodeURIComponent(current.id);
 };
